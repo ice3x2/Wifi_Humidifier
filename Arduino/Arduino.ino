@@ -29,7 +29,7 @@
 #define RES_UNLINK_LEN 8
 #define RES_NONE 0
 
-#define VER 102
+#define VER 104
 #define MODE_BOOT 0
 #define MODE_SETUP 1
 #define MODE_RUN 2
@@ -37,6 +37,12 @@
 
 #define DELAY_PUSH_SETUP 5000
 #define DELAY_LED_SETUP 500
+#define DATA_STATE_WAIT 0
+#define DATA_STATE_HTTP_FIND_FPATH 1
+#define DATA_STATE_HTTP_FIND_EPATH 2
+#define DATA_STATE_HTTP_FIND_EOL 3
+#define DATA_STATE_HTTP_SEND_PAGE 4
+
 
 typedef struct Config {
   uint8_t version = VER;
@@ -44,8 +50,8 @@ typedef struct Config {
   char ssid[32] = "unknown";
   char pass[32] = "unknown";
   char serverAddr[64] = "unknown";
-  int port = 80;
-  uint8_t tailVersion = VER;   
+  uint16_t port = 80;
+  uint8_t tailVersion = VER;
 } CONFIG;
 
 
@@ -54,26 +60,24 @@ uint8_t sendATCmd(const char* cmd,int timeout = 0,uint8_t* buffer = NULL, int bu
 uint8_t checkResString(char ch, uint8_t idx);
 bool equalResType(uint8_t refResLen, uint8_t targetResLen);
 bool isResCheckOk(uint8_t checkResresult);
-void intoSetupMode();
+bool checkConfig(CONFIG* config);
+void intoSetupMode(bool force = false);
 void setMode();
 void showStatusLed();
-void saveData(const void* data, int start, int length);
-void loadData(void* data, int offset, int length);
-bool checkConfig(CONFIG* config);
+void saveConfig();
+void loadConfig();
 void printConfig(CONFIG* config);
 
-bool _isLink = false;
+//bool _isLink = false;
+void resetBuffer();
 uint8_t _buffer[BUFF_SIZE];
 int _bufferIdx = 0;
 int _resIdx = 0;
+int _dataState = 0;
 long _lastClickMillis = 0;
 long _lastOnLedMillis = 0;
 CONFIG _config;
 SoftwareSerial wifi(WIFI_RX, WIFI_TX);
-
-
-
-
 
 
 void setup() {
@@ -84,7 +88,7 @@ void setup() {
     Serial.begin(9600);
     Serial.println("debug :: Ready..");
   #endif
-  loadData(&_config, 0, sizeof(_config));
+  loadConfig();
   if(!checkConfig(&_config)) {
     _config = Config();
     #ifdef DEBUG
@@ -97,7 +101,10 @@ void setup() {
     printConfig(&_config);
   }
   #endif
- 
+  Serial.println(_config.mode );
+  if(_config.mode == MODE_SETUP) {
+    intoSetupMode(true);
+  }
 }
 
 void loop() {
@@ -119,30 +126,53 @@ void loop() {
       #endif
    }
    showStatusLed();
+   
     
    if(_config.mode == MODE_SETUP && wifi.available()) {
       uint8_t data = wifi.read();
-      _buffer[_bufferIdx % BUFF_SIZE] = data;
       uint8_t result = checkResString(data,_resIdx);
+
       
       if(equalResType(RES_LINK_LEN,result)) {
-        _isLink = true;
+        _dataState = DATA_STATE_HTTP_FIND_FPATH;
         _resIdx = 0;
         #ifdef DEBUG
         Serial.println("debug : LINKED");
         #endif
-      } else if(equalResType(RES_UNLINK_LEN,result)) {
-        _isLink = false;
+      } else if(equalResType(RES_OK_LEN,result) && _dataState == DATA_STATE_HTTP_FIND_FPATH) {
+        _dataState = DATA_STATE_WAIT;
         _resIdx = 0;
         #ifdef DEBUG
-        Serial.println("debug : UNLINKED");
+        Serial.println("debug : WAIT");
         #endif
+      } else if(_dataState == DATA_STATE_HTTP_FIND_EOL && isResCheckOk(result)) {
+        if(strncmp((char*)_buffer, "/set/", 5) > 0) { 
+          for(int i = 5; --i;) {
+            _buffer[5 - i - 1] = i; 
+          }
+          
+          char * token = NULL;
+          
+           
+        }
+        
       } else if(result == RES_NONE || isResCheckOk(result)) {
         _resIdx = 0;
       } else {
         _resIdx++;
       }
-      
+
+      if(_dataState == DATA_STATE_HTTP_FIND_FPATH && data == '/') {
+        _dataState = DATA_STATE_HTTP_FIND_EPATH;
+        resetBuffer();
+        _buffer[_bufferIdx % BUFF_SIZE] = data;
+      } else if(_dataState == DATA_STATE_HTTP_FIND_EPATH) {
+        if(data == ' ') {
+          _dataState = DATA_STATE_HTTP_FIND_EOL;  
+        } else {
+          _buffer[_bufferIdx % BUFF_SIZE] = data; 
+        }
+      }
       _bufferIdx++;
       #ifdef DEBUG
         Serial.write((char)data);
@@ -180,6 +210,16 @@ void loop() {
    
 }
 
+/**
+ * Buffer 에 있는 내용을 모두 0으로 채운다. memset 함수가 종종 이상하게 동작하여 느러도 이 것으로 대체.
+ */
+void resetBuffer() {
+  _bufferIdx = 0;
+  for(int i = BUFF_SIZE; --i;) {
+    _buffer[i] = 0;
+  }
+}
+
 
 void showStatusLed() {
   int delayMillis = 0;
@@ -201,10 +241,10 @@ void setMode() {
   }
 }
 
-void intoSetupMode() {
-  if(_config.mode == MODE_SETUP) return;
+void intoSetupMode(bool force) {
+  if(_config.mode == MODE_SETUP && !force) return;
   _config.mode = MODE_SETUP;
-  saveData(&_config,0,sizeof(_config));
+  saveConfig();
   sendATCmd("AT+RST\r\n", 2000);
   sendATCmd("AT+CWMODE=2\r\n");
   sendATCmd("AT+CIPMUX=1\r\n");
@@ -269,6 +309,11 @@ bool equalResType(uint8_t refResLen, uint8_t targetResLen) {
   return (targetResLen & ~0x80) == refResLen;
 }
 
+/**
+ * 
+ */
+
+
 uint8_t checkResString(char ch, uint8_t idx) {
   if(idx < RES_UNKNOWN_LEN && ch == RES_UNKNOWN[idx]) {
      return RES_UNKNOWN_LEN;
@@ -301,26 +346,55 @@ uint8_t checkResString(char ch, uint8_t idx) {
   return 0;
 }
 
-
-void loadData(void* data, int offset, int length) {
-    uint8_t* pos = (uint8_t*)data;
-    for(int i = 0; --length; ++i,++pos) {
-       *pos = EEPROM.read(i);
-    }
+void loadConfig() {
+  int offset = 0;
+  _config.version = EEPROM.read(offset++);
+  _config.mode = EEPROM.read(offset++);
+  for(int i = 0, n = sizeof(_config.ssid);i < n; ++i)
+    _config.ssid[i] = EEPROM.read(offset++);
+    
+  for(int i = 0, n = sizeof(_config.pass);i < n; ++i)
+    _config.pass[i] = EEPROM.read(offset++);
+    
+  for(int i = 0, n = sizeof(_config.serverAddr);i < n; ++i)
+    _config.serverAddr[i] = EEPROM.read(offset++);
+    
+  _config.port =  ((short)EEPROM.read(offset++)) << 8;
+  _config.port  |=  EEPROM.read(offset++);
+  _config.tailVersion = EEPROM.read(offset);
 }
 
-void saveData(const void* data, int start, int length) {
-  const uint8_t* pos = (const uint8_t*)data;
-  Serial.println(length);
-  int ln = length;
-  for(int i = start; --length; ++i,++pos) {
-      EEPROM.write(i, *pos);
-  }
-  #ifdef DEBUG
-      Serial.begin(9600);
-      Serial.println("debug :: config saved");
-   #endif
+
+void saveConfig() {
+  Serial.print("SSID SIZE : ");
+  Serial.println(sizeof(_config.ssid));
+  int offset = 0;
+  EEPROM.write(offset++, _config.version);
+  EEPROM.write(offset++, _config.mode);
+  for(int i = 0, n = sizeof(_config.ssid);i < n; ++i)
+    EEPROM.write(offset++, _config.ssid[i]);
+    
+  for(int i = 0, n = sizeof(_config.pass);i < n; ++i)
+    EEPROM.write(offset++, _config.serverAddr[i]);
+    
+  for(int i = 0, n = sizeof(_config.serverAddr);i < n; ++i)
+    EEPROM.write(offset++, _config.serverAddr[i]);   
+    
+  EEPROM.write(offset++, (byte)(_config.port >> 8));
+  EEPROM.write(offset++, (byte)_config.port);
+  EEPROM.write(offset++, _config.tailVersion);
 }
+
+/*typedef struct Config {
+  uint8_t version = VER;
+  uint8_t mode = MODE_BOOT;
+  char ssid[32] = "unknown";
+  char pass[32] = "unknown";
+  char serverAddr[64] = "unknown";
+  int port = 80;
+  uint8_t tailVersion = VER;   
+} CONFIG;*/
+
 
 bool checkConfig(CONFIG* config) {
   return config->tailVersion == VER && config->version == VER;
