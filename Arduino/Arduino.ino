@@ -23,6 +23,11 @@
 #define RES_NC_LEN 11
 #define RES_UNKNOWN "\r\n"
 #define RES_UNKNOWN_LEN 2
+#define RES_LINK "Link\r\n"
+#define RES_LINK_LEN 6
+#define RES_UNLINK "\r\nUnlink"
+#define RES_UNLINK_LEN 8
+#define RES_NONE 0
 
 #define VER 102
 #define MODE_BOOT 0
@@ -47,6 +52,8 @@ typedef struct Config {
 
 uint8_t sendATCmd(const char* cmd,int timeout = 0,uint8_t* buffer = NULL, int bufSize = 16);
 uint8_t checkResString(char ch, uint8_t idx);
+bool equalResType(uint8_t refResLen, uint8_t targetResLen);
+bool isResCheckOk(uint8_t checkResresult);
 void intoSetupMode();
 void setMode();
 void showStatusLed();
@@ -55,13 +62,16 @@ void loadData(void* data, int offset, int length);
 bool checkConfig(CONFIG* config);
 void printConfig(CONFIG* config);
 
-
-CONFIG _config;
-SoftwareSerial wifi(WIFI_RX, WIFI_TX);
+bool _isLink = false;
+uint8_t _buffer[BUFF_SIZE];
+int _bufferIdx = 0;
+int _resIdx = 0;
 long _lastClickMillis = 0;
 long _lastOnLedMillis = 0;
-int _bufferIdx = 0;
-uint8_t _buffer[BUFF_SIZE];
+CONFIG _config;
+SoftwareSerial wifi(WIFI_RX, WIFI_TX);
+
+
 
 
 
@@ -87,9 +97,6 @@ void setup() {
     printConfig(&_config);
   }
   #endif
-  
-  
-
  
 }
 
@@ -114,12 +121,34 @@ void loop() {
    showStatusLed();
     
    if(_config.mode == MODE_SETUP && wifi.available()) {
-      byte data = wifi.read();
+      uint8_t data = wifi.read();
       _buffer[_bufferIdx % BUFF_SIZE] = data;
+      uint8_t result = checkResString(data,_resIdx);
+      
+      if(equalResType(RES_LINK_LEN,result)) {
+        _isLink = true;
+        _resIdx = 0;
+        #ifdef DEBUG
+        Serial.println("debug : LINKED");
+        #endif
+      } else if(equalResType(RES_UNLINK_LEN,result)) {
+        _isLink = false;
+        _resIdx = 0;
+        #ifdef DEBUG
+        Serial.println("debug : UNLINKED");
+        #endif
+      } else if(result == RES_NONE || isResCheckOk(result)) {
+        _resIdx = 0;
+      } else {
+        _resIdx++;
+      }
+      
       _bufferIdx++;
       #ifdef DEBUG
         Serial.write((char)data);
       #endif
+
+      
       /*if(.find("+IPD,")) {
          int connectionId = esp8266.read()-48; // subtract 48 because the read() function returns 
                                                // the ASCII decimal value and 0 (the first decimal number) starts at 48
@@ -205,9 +234,9 @@ uint8_t sendATCmd(const char* cmd,int timeout,uint8_t* buffer, int bufSize) {
        bufIdx++;
        if(timeout == 0) {
          result = checkResString(data, resIdx++);
-         if(result == 0) {
+         if(result == RES_NONE) {
             resIdx = 0;
-         } else if((result & 0x80) == 0x80) {  
+         } else if(isResCheckOk(result)) {  
             result = result & 0x7f;
             #ifdef DEBUG
               Serial.println();
@@ -233,6 +262,13 @@ uint8_t sendATCmd(const char* cmd,int timeout,uint8_t* buffer, int bufSize) {
   return result;
 }
 
+bool isResCheckOk(uint8_t checkResresult) {
+  return (checkResresult & 0x80) == 0x80;
+}
+bool equalResType(uint8_t refResLen, uint8_t targetResLen) {
+  return (targetResLen & ~0x80) == refResLen;
+}
+
 uint8_t checkResString(char ch, uint8_t idx) {
   if(idx < RES_UNKNOWN_LEN && ch == RES_UNKNOWN[idx]) {
      return RES_UNKNOWN_LEN;
@@ -251,6 +287,16 @@ uint8_t checkResString(char ch, uint8_t idx) {
        return RES_NC_LEN | 0x80;
      }
      return RES_NC_LEN;
+  } else if(idx < RES_LINK_LEN && ch == RES_LINK[idx]) {
+    if(idx == RES_LINK_LEN - 1) {
+       return RES_LINK_LEN | 0x80;
+     }
+     return RES_LINK_LEN;
+  } else if(idx < RES_UNLINK_LEN && ch == RES_UNLINK[idx]) {
+    if(idx == RES_UNLINK_LEN - 1) {
+       return RES_UNLINK_LEN | 0x80;
+     }
+     return RES_UNLINK_LEN;
   }
   return 0;
 }
@@ -289,6 +335,9 @@ void printConfig(CONFIG* config) {
   Serial.println("debug :: serverAddr - " + String(config->serverAddr));
   Serial.println("debug :: port - " + String(config->port));
 }
+
+
+
 
 /* 
   byte buffer[256];
