@@ -1,5 +1,6 @@
 #include <SoftwareSerial.h>
 #include <EEPROM.h>
+#include "EspResponseChecker.h"
 
 #define WIFI_RX 2 
 #define WIFI_TX 3
@@ -12,24 +13,10 @@
 #define DHT22_PIN 7
 #define WATERGAUGE_PIN 2
 
-#define BUFF_SIZE 512
+#define BUFF_SIZE 128
 #define DEBUG 
 
-#define RES_OK "\r\nOK"
-#define RES_OK_LEN 4
-#define RES_ERROR "\r\nERROR"
-#define RES_ERROR_LEN 7
-#define RES_NC "no change\r\n"
-#define RES_NC_LEN 11
-#define RES_UNKNOWN "\r\n"
-#define RES_UNKNOWN_LEN 2
-#define RES_LINK "Link\r\n"
-#define RES_LINK_LEN 6
-#define RES_UNLINK "\r\nUnlink"
-#define RES_UNLINK_LEN 8
-#define RES_NONE 0
-
-#define VER 104
+#define VER 105
 #define MODE_BOOT 0
 #define MODE_SETUP 1
 #define MODE_RUN 2
@@ -50,15 +37,14 @@ typedef struct Config {
   char ssid[32] = "unknown";
   char pass[32] = "unknown";
   char serverAddr[64] = "unknown";
-  uint16_t port = 80;
+  uint32_t port = 80;
   uint8_t tailVersion = VER;
 } CONFIG;
 
 
 
 uint8_t sendATCmd(const char* cmd,int timeout = 0,uint8_t* buffer = NULL, int bufSize = 16);
-uint8_t checkResString(char ch, uint8_t idx);
-bool equalResType(uint8_t refResLen, uint8_t targetResLen);
+
 bool isResCheckOk(uint8_t checkResresult);
 bool checkConfig(CONFIG* config);
 void intoSetupMode(bool force = false);
@@ -72,12 +58,12 @@ void printConfig(CONFIG* config);
 void resetBuffer();
 uint8_t _buffer[BUFF_SIZE];
 int _bufferIdx = 0;
-int _resIdx = 0;
 int _dataState = 0;
 long _lastClickMillis = 0;
 long _lastOnLedMillis = 0;
 CONFIG _config;
 SoftwareSerial wifi(WIFI_RX, WIFI_TX);
+ESPResponseChecker _resChecker;
 
 
 void setup() {
@@ -101,9 +87,8 @@ void setup() {
     printConfig(&_config);
   }
   #endif
-  Serial.println(_config.mode );
   if(_config.mode == MODE_SETUP) {
-    intoSetupMode(true);
+    //intoSetupMode(true);
   }
 }
 
@@ -121,90 +106,70 @@ void loop() {
       //reset();
    } else {
       _lastClickMillis = 0;
-      #ifdef DEBUG
-      //Serial.println("debug : up reset");
-      #endif
    }
    showStatusLed();
    
     
    if(_config.mode == MODE_SETUP && wifi.available()) {
       uint8_t data = wifi.read();
-      uint8_t result = checkResString(data,_resIdx);
-
-      
-      if(equalResType(RES_LINK_LEN,result)) {
+      uint8_t resStatus =  _resChecker.putCharAndCheck(data);
+      if(resStatus == RES_IPD) {
         _dataState = DATA_STATE_HTTP_FIND_FPATH;
-        _resIdx = 0;
         #ifdef DEBUG
-        Serial.println("debug : LINKED");
+        Serial.println("\nDATA_STATE_HTTP_FIND_FPATH");
         #endif
-      } else if(equalResType(RES_OK_LEN,result) && _dataState == DATA_STATE_HTTP_FIND_FPATH) {
-        _dataState = DATA_STATE_WAIT;
-        _resIdx = 0;
-        #ifdef DEBUG
-        Serial.println("debug : WAIT");
-        #endif
-      } else if(_dataState == DATA_STATE_HTTP_FIND_EOL && isResCheckOk(result)) {
-        if(strncmp((char*)_buffer, "/set/", 5) > 0) { 
-          for(int i = 5; --i;) {
-            _buffer[5 - i - 1] = i; 
-          }
-          
-          char * token = NULL;
-          
-           
-        }
-        
-      } else if(result == RES_NONE || isResCheckOk(result)) {
-        _resIdx = 0;
-      } else {
-        _resIdx++;
       }
-
-      if(_dataState == DATA_STATE_HTTP_FIND_FPATH && data == '/') {
-        _dataState = DATA_STATE_HTTP_FIND_EPATH;
-        resetBuffer();
-        _buffer[_bufferIdx % BUFF_SIZE] = data;
+      else if(_dataState == DATA_STATE_HTTP_FIND_FPATH) {
+        if(data == '/') {
+          _dataState = DATA_STATE_HTTP_FIND_EPATH;
+          Serial.println("DATA_STATE_HTTP_FIND_EPATH");
+           resetBuffer();
+          _buffer[_bufferIdx % BUFF_SIZE] = data;
+          _bufferIdx++;
+        }
       } else if(_dataState == DATA_STATE_HTTP_FIND_EPATH) {
         if(data == ' ') {
+          Serial.println("DATA_STATE_HTTP_FIND_EOL");
           _dataState = DATA_STATE_HTTP_FIND_EOL;  
         } else {
           _buffer[_bufferIdx % BUFF_SIZE] = data; 
+          _bufferIdx++;
         }
       }
-      _bufferIdx++;
-      #ifdef DEBUG
-        Serial.write((char)data);
-      #endif
-
+     if(_dataState == DATA_STATE_HTTP_FIND_EOL) {
+        _dataState = DATA_STATE_WAIT;
+        if(strncmp((char*)_buffer, "/set/", 5) == 0) { 
+          for(int i = 0; i < BUFF_SIZE; ++i){
+            _buffer[i] = _buffer[i + 5]; 
+          }
+          Serial.println((char*)_buffer);
+          char *token = strtok((char*)_buffer, "::");
+          int pos = 0;
+          while(token != NULL) {
+            Serial.println(token);
+            if(pos == 0) {
+              strcpy(_config.ssid, token);
+            } else if(pos == 1) {
+              strcpy(_config.pass, token);
+            } else if(pos == 2) {
+              strcpy(_config.serverAddr, token);
+            } else if(pos == 3) {
+              uint32_t port = atol(token);
+              Serial.println(port);
+              _config.port = port;
+            }
+            token = strtok(NULL, "::");
+            ++pos;
+          }
+          printConfig(&_config);
+          resetBuffer();
+        }
       
-      /*if(.find("+IPD,")) {
-         int connectionId = esp8266.read()-48; // subtract 48 because the read() function returns 
-                                               // the ASCII decimal value and 0 (the first decimal number) starts at 48
-         String webpage = "<h1>Hello</h1>&lth2>World!</h2><button>LED1</button>";     
-         String cipSend = "AT+CIPSEND=";
-         cipSend += connectionId;
-         cipSend += ",";
-         cipSend +=webpage.length();
-         cipSend +="\r\n";
-         sendData(cipSend,1000,DEBUG);
-         sendData(webpage,1000,DEBUG);
-         webpage="<button>LED2</button>";
-         cipSend = "AT+CIPSEND=";
-         cipSend += connectionId;
-         cipSend += ",";
-         cipSend +=webpage.length();
-         cipSend +="\r\n";
-         
-         sendData(cipSend,1000,DEBUG);
-         sendData(webpage,1000,DEBUG);
-     
-         String closeCommand = "AT+CIPCLOSE="; 
-         closeCommand+=connectionId; // append connection id
-         closeCommand+="\r\n";
-         sendData(closeCommand,3000,DEBUG); 
-      }*/
+     }
+      
+      /*#ifdef DEBUG
+        Serial.write((char)data);
+      #endif*/
    }
 
    
@@ -215,7 +180,7 @@ void loop() {
  */
 void resetBuffer() {
   _bufferIdx = 0;
-  for(int i = BUFF_SIZE; --i;) {
+  for(int i = BUFF_SIZE; i--;) {
     _buffer[i] = 0;
   }
 }
@@ -256,8 +221,9 @@ uint8_t sendATCmd(const char* cmd,int timeout,uint8_t* buffer, int bufSize) {
   int bufIdx = 0;
   uint8_t resIdx = 0;
   uint8_t data = 0;
-  uint8_t result = 0;
+  uint8_t resStatus = 0;
   long lastMs = millis();
+  _resChecker.reset();
   wifi.print(cmd);
   if(buffer == NULL) {
      buffer = new uint8_t[bufSize];
@@ -273,18 +239,17 @@ uint8_t sendATCmd(const char* cmd,int timeout,uint8_t* buffer, int bufSize) {
        buffer[bufIdx % bufSize] = data;
        bufIdx++;
        if(timeout == 0) {
-         result = checkResString(data, resIdx++);
-         if(result == RES_NONE) {
+         resStatus = _resChecker.putCharAndCheck(data);
+         if(resStatus == RES_NONE) {
             resIdx = 0;
-         } else if(isResCheckOk(result)) {  
-            result = result & 0x7f;
+         } else if(resStatus != RES_NONE) {  
             #ifdef DEBUG
               Serial.println();
-              if(result == RES_OK_LEN) 
+              if(resStatus == RES_OK) 
                   Serial.println("debug :: OK res checked.");
-              else if(result == RES_ERROR_LEN) 
+              else if(resStatus == RES_ERROR) 
                   Serial.println("debug :: ERROR res check. ");
-              else if(result == RES_NC_LEN) 
+              else if(resStatus == RES_NC) 
                   Serial.println("debug :: no change res checked.");
             #endif          
             timeout = 1;
@@ -299,7 +264,7 @@ uint8_t sendATCmd(const char* cmd,int timeout,uint8_t* buffer, int bufSize) {
   if(isBufferAllocationed) {
     delete[] buffer;  
   } 
-  return result;
+  return resStatus;
 }
 
 bool isResCheckOk(uint8_t checkResresult) {
@@ -309,42 +274,7 @@ bool equalResType(uint8_t refResLen, uint8_t targetResLen) {
   return (targetResLen & ~0x80) == refResLen;
 }
 
-/**
- * 
- */
 
-
-uint8_t checkResString(char ch, uint8_t idx) {
-  if(idx < RES_UNKNOWN_LEN && ch == RES_UNKNOWN[idx]) {
-     return RES_UNKNOWN_LEN;
-  } else if(idx < RES_OK_LEN && ch == RES_OK[idx]) {
-     if(idx == RES_OK_LEN - 1) {
-       return RES_OK_LEN | 0x80;
-     }
-     return RES_OK_LEN;
-  } else if(idx < RES_ERROR_LEN && ch == RES_ERROR[idx]) {
-    if(idx == RES_ERROR_LEN - 1) {
-       return RES_ERROR_LEN | 0x80;
-     }
-     return RES_ERROR_LEN;
-  } else if(idx < RES_NC_LEN && ch == RES_NC[idx]) {
-    if(idx == RES_NC_LEN - 1) {
-       return RES_NC_LEN | 0x80;
-     }
-     return RES_NC_LEN;
-  } else if(idx < RES_LINK_LEN && ch == RES_LINK[idx]) {
-    if(idx == RES_LINK_LEN - 1) {
-       return RES_LINK_LEN | 0x80;
-     }
-     return RES_LINK_LEN;
-  } else if(idx < RES_UNLINK_LEN && ch == RES_UNLINK[idx]) {
-    if(idx == RES_UNLINK_LEN - 1) {
-       return RES_UNLINK_LEN | 0x80;
-     }
-     return RES_UNLINK_LEN;
-  }
-  return 0;
-}
 
 void loadConfig() {
   int offset = 0;
@@ -359,7 +289,9 @@ void loadConfig() {
   for(int i = 0, n = sizeof(_config.serverAddr);i < n; ++i)
     _config.serverAddr[i] = EEPROM.read(offset++);
     
-  _config.port =  ((short)EEPROM.read(offset++)) << 8;
+  _config.port |=  ((uint32_t)EEPROM.read(offset++)) << 24;
+  _config.port |=  ((uint32_t)EEPROM.read(offset++)) << 16;
+  _config.port |=  ((uint32_t)EEPROM.read(offset++)) << 8;
   _config.port  |=  EEPROM.read(offset++);
   _config.tailVersion = EEPROM.read(offset);
 }
@@ -379,7 +311,9 @@ void saveConfig() {
     
   for(int i = 0, n = sizeof(_config.serverAddr);i < n; ++i)
     EEPROM.write(offset++, _config.serverAddr[i]);   
-    
+
+  EEPROM.write(offset++, (byte)(_config.port >> 24));
+  EEPROM.write(offset++, (byte)(_config.port >> 16));
   EEPROM.write(offset++, (byte)(_config.port >> 8));
   EEPROM.write(offset++, (byte)_config.port);
   EEPROM.write(offset++, _config.tailVersion);
