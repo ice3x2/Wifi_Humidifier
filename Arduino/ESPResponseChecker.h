@@ -1,4 +1,11 @@
-#include<arduino.h>
+
+#ifdef TEST 
+  #include <iostream>
+#else
+  #include <arduino.h>
+#endif
+
+
 #pragma once
 #define RES_OK_STR "\r\nOK"
 #define RES_OK_LEN 4
@@ -20,8 +27,15 @@
 #define RES_IPD_STR "\r\n+IPD,"
 #define RES_IPD_LEN 7
 #define RES_IPD 0x20
+#define RES_SEND_OK_STR "\r\nSEND OK"
+#define RES_SEND_OK_LEN 9
+#define RES_SEND_OK 0x40
+#define RES_FAIL_STR "\r\nFAIL"
+#define RES_FAIL_LEN 6
+#define RES_FAIL 0x80
 #define RES_MAX_LEN 11
 #define RES_NONE 0
+
 
 class ESPResponseChecker {
 private:
@@ -30,17 +44,26 @@ private:
     char _strcmpBuffer[BufferSize];
     uint8_t _bufferPos;
     uint8_t _cmpStatus;
+    int16_t _ipdID;
+    int16_t _ipdDataLength;
+    bool _isIPDReadMode = false;
     
     void resetBuffer();
     void putChar(char ch);
     void resetStatus();
     void removeStatus(uint8_t status);
+    void resetIPD();
+    uint8_t readIPDMode(char ch);
+    
     uint8_t eqaulCharInResStr(uint8_t backIdx, char ch, char* resStr,  uint8_t length,uint8_t resType);
     
-
+    
+    
 public:
     ESPResponseChecker();
     void reset();
+    int16_t getIpdID();
+    int16_t getIpdDataLength();
     uint8_t putCharAndCheck(char ch);
 };
 
