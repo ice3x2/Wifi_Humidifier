@@ -5,6 +5,8 @@
 #define WIFI_RX 2 
 #define WIFI_TX 3
 
+#define PORT 11700 
+
 #define FAN_CTR 9
 #define PW_CTR 6
 
@@ -16,7 +18,7 @@
 #define BUFF_SIZE 128
 #define DEBUG 
 
-#define VER 107
+#define VER 100
 #define MODE_WAIT 0
 #define MODE_SETUP 1
 #define MODE_RUN 2
@@ -39,7 +41,7 @@ typedef struct Config {
   char ssid[16] = "unknown";
   char pass[16] = "unknown";
   char serverAddr[24] = "unknown";
-  uint32_t port = 80;
+  char key[8] = "unknown";
   uint8_t tailVersion = VER;
 } CONFIG;
 
@@ -155,9 +157,7 @@ void loop() {
             } else if(pos == 2) {
               strcpy(_config.serverAddr, token);
             } else if(pos == 3) {
-              uint32_t port = atol(token);
-              Serial.println(port);
-              _config.port = port;
+              strcpy(_config.key, token);
             }
             token = strtok(NULL, "::");
             ++pos;
@@ -389,11 +389,10 @@ void loadConfig() {
     
   for(int i = 0, n = sizeof(_config.serverAddr);i < n; ++i)
     _config.serverAddr[i] = EEPROM.read(offset++);
-    
-  _config.port |=  ((uint32_t)EEPROM.read(offset++)) << 24;
-  _config.port |=  ((uint32_t)EEPROM.read(offset++)) << 16;
-  _config.port |=  ((uint32_t)EEPROM.read(offset++)) << 8;
-  _config.port  |=  EEPROM.read(offset++);
+ 
+  for(int i = 0, n = sizeof(_config.key);i < n; ++i)
+   _config.key[i] = EEPROM.read(offset++);
+  
   _config.tailVersion = EEPROM.read(offset);
 }
 
@@ -413,10 +412,10 @@ void saveConfig() {
   for(int i = 0, n = sizeof(_config.serverAddr);i < n; ++i)
     EEPROM.write(offset++, _config.serverAddr[i]);   
 
-  EEPROM.write(offset++, (byte)(_config.port >> 24));
-  EEPROM.write(offset++, (byte)(_config.port >> 16));
-  EEPROM.write(offset++, (byte)(_config.port >> 8));
-  EEPROM.write(offset++, (byte)_config.port);
+  for(int i = 0, n = sizeof(_config.key);i < n; ++i)
+    EEPROM.write(offset++, _config.key[i]);   
+
+
   EEPROM.write(offset++, _config.tailVersion);
 }
 
@@ -433,7 +432,7 @@ void printConfig(CONFIG* config) {
   Serial.println("d : ssid - " + String(config->ssid));
   Serial.println("d : pass - " + String(config->pass));
   Serial.println("d : serverAddr - " + String(config->serverAddr));
-  Serial.println("d : port - " + String(config->port));
+  Serial.println("d : key - " + String(config->key));
 }
 
 
