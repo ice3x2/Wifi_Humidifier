@@ -3,12 +3,12 @@
 /**
  * Module dependencies.
  */
-require('../import').init('src',['(.+)test/','(.+)node_modules/','(.+)views/','(.+)gulp/']);
+require('../import').init('./src',['(.+)test/','(.+)node_modules/','(.+)views/','(.+)gulp/']);
 var properties = require ("properties");
 var app = require('../app');
 var debug = require('debug')('Server:server');
 var http = require('http');
-
+global._ = require('lodash');
 var options = {
   path: true,
   namespaces: true,
@@ -23,13 +23,14 @@ properties.parse (".properties", options, function (error, obj){
     throw error;
   } else
   console.log (obj);
-  global._properties = obj;
+  global.__properties = obj;
   startWebServer();
   startTCPServer();
 });
 
+
 function startTCPServer() {
-  var server =require('net').createServer(_include("ControlServer")).listen(_properties.control.port);
+  var server =require('net').createServer(_include("ControlServer")).listen(__properties.control.port);
 }
 
 function startWebServer() {
@@ -37,7 +38,7 @@ function startWebServer() {
    * Get port from environment and store in Express.
    */
 
-  var port = normalizePort(global._properties.web.port);
+  var port = normalizePort(global.__properties.web.port);
   app.set('port', port);
 
   /**

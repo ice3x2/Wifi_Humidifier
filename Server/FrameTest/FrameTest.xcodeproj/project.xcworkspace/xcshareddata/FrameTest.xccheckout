@@ -14,7 +14,7 @@
 		<string>https://github.com/ice3x2/Wifi_Humidifier.git</string>
 	</dict>
 	<key>IDESourceControlProjectPath</key>
-	<string>testProject/FrameTest/FrameTest.xcodeproj</string>
+	<string>Server/FrameTest/FrameTest.xcodeproj</string>
 	<key>IDESourceControlProjectRelativeInstallPathDictionary</key>
 	<dict>
 		<key>261119FF5475DD0449B6792C0B68DB07435AD047</key>

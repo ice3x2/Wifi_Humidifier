@@ -8,7 +8,6 @@
 
 /* Begin PBXBuildFile section */
 		9FDA00041B3DB69F005D2512 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9FDA00031B3DB69F005D2512 /* main.cpp */; };
-		9FDA000C1B3DB6FD005D2512 /* Frame.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9FDA000B1B3DB6FD005D2512 /* Frame.cpp */; };
 		9FF0E18B1B9C7BE300D2687D /* ESPResponseChecker.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9FF0E1891B9C7BE300D2687D /* ESPResponseChecker.cpp */; };
 /* End PBXBuildFile section */
 
@@ -27,8 +26,6 @@
 /* Begin PBXFileReference section */
 		9FDA00001B3DB69F005D2512 /* FrameTest */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = FrameTest; sourceTree = BUILT_PRODUCTS_DIR; };
 		9FDA00031B3DB69F005D2512 /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
-		9FDA000A1B3DB6C4005D2512 /* Frame.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Frame.h; sourceTree = "<group>"; };
-		9FDA000B1B3DB6FD005D2512 /* Frame.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Frame.cpp; sourceTree = "<group>"; };
 		9FF0E1891B9C7BE300D2687D /* ESPResponseChecker.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ESPResponseChecker.cpp; sourceTree = "<group>"; };
 		9FF0E18A1B9C7BE300D2687D /* ESPResponseChecker.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ESPResponseChecker.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -56,8 +53,6 @@
 			isa = PBXGroup;
 			children = (
 				9FDA00031B3DB69F005D2512 /* main.cpp */,
-				9FDA000A1B3DB6C4005D2512 /* Frame.h */,
-				9FDA000B1B3DB6FD005D2512 /* Frame.cpp */,
 				9FF0E1891B9C7BE300D2687D /* ESPResponseChecker.cpp */,
 				9FF0E18A1B9C7BE300D2687D /* ESPResponseChecker.h */,
 			);
@@ -129,7 +124,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				9FDA00041B3DB69F005D2512 /* main.cpp in Sources */,
-				9FDA000C1B3DB6FD005D2512 /* Frame.cpp in Sources */,
 				9FF0E18B1B9C7BE300D2687D /* ESPResponseChecker.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

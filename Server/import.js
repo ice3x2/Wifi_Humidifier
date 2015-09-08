@@ -44,6 +44,7 @@ var importConfig = function() {
                     path : currentPath,
                     include : currentPath.replace(/(.+)[/]/i, '').replace(/[.]js/i, '')
                 });
+
                 //addImportElementInTree(currentPath);
             }
         }

@@ -7,7 +7,6 @@
 //
 
 #include <iostream>
-#include "Frame.h"
 #include "ESPResponseChecker.h"
 
 using namespace std;
@@ -20,57 +19,71 @@ string arrayPrint(byte* array, int len);
 
 
 
-#define RES_OK_STR "\r\nOK"
-#define RES_OK_LEN 4
-#define RES_OK 0x01
-#define RES_ERROR_STR "\r\nERROR"
-#define RES_ERROR_LEN 7
-#define RES_ERROR 0x02
-#define RES_NC_STR "no change\r\n"
-#define RES_NC_LEN 11
-#define RES_NC 0x04
-#define RES_UNKNOWN_STR "\r\n"
-#define RES_UNKNOWN_LEN 2
-#define RES_LINK_STR "Link\r\n"
-#define RES_LINK_LEN 6
-#define RES_LINK 0x08
-#define RES_UNLINK_STR "\r\nUnlink"
-#define RES_UNLINK_LEN 8
-#define RES_UNLINK 0x10
-#define RES_IPD_STR "\r\n+IPD,"
-#define RES_IPD_LEN 7
-#define RES_IPD 0x20
-#define RES_MAX_LEN 11
-#define RES_NONE 0
-
-#define HTML_SETUP_STR "HTTP/1.0 200 OK\r\nContent-Type: text/plain\r\n\r\n"
-
-
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <arpa/inet.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <time.h>
 
 
 #define BUF_LEN 128
+#define NIL_VALUE -1000
 
 
+long millis() {
+
+    return (long)time(NULL) * 1000;
+}
+
+typedef struct THValue {
+    int16_t temperature = NIL_VALUE;
+    int16_t humidity = NIL_VALUE;
+} THValue;
+
+typedef struct ControlValues {
+    uint8_t minTemperature = 40;
+    uint8_t minHumidity = 60;
+    uint8_t maxHumidity = 100;
+    uint8_t water = 0;
+    uint8_t fanPWM = 255;
+    uint8_t powerPWM = 255;
+} ControlValues;
+
+
+#define DELAY_SEND_TH_VALUE 3000
 class Controller {
     
 private:
-    typedef void (*funcWrite)(uint8_t*,uint8_t);
-    enum TYPE { TYPE_CONNECT = 'k', TYPE_MSG = 'm',TYPE_HEART_BEAT = 'h'};
-    enum CMD {NONE};
-    enum STATUS {STATUS_DISCONNECTED, STATUS_MAKING_CONNECTION,STATUS_IDLE,STATUS_SEND, STATUS_RECEIVE,STATUS_ERROR  };
-    bool _isBusy = false;
+    typedef void (*OnWriteCallback)(uint8_t*,uint8_t);
+    typedef void (*OnTHValueCallback)(THValue* const _thValue);
+    typedef bool (*OnWaterStateCallback)();
+    enum TYPE { // 데이터 타입.
+        TYPE_CONNECT = 'k', // 연결
+        TYPE_MSG = 'm', // 메세지
+        TYPE_HEART_BEAT = 'h' // 주기적으로 주고 받는 Heart beat
+    };
+    enum CMD {
+        NONE,
+        CMD_TH_VALUE = 't' // 온도와 습도를 서버로 보내는 명령.
+        
+    };
+    enum STATUS {STATUS_DISCONNECTED, STATUS_MAKING_CONNECTION,STATUS_IDLE,STATUS_SEND, STATUS_WAIT_ACK,STATUS_ERROR  };
+
+   
+    
+
     STATUS _status;
+    ControlValues _controlValues;
+    OnWriteCallback _onWriteCallback;
+    OnTHValueCallback _onTHValueCallback;
+    THValue _thValue;
     uint8_t _pos;
-    uint8_t _receiveLength;
     uint8_t* _buffer;
     uint8_t _buflen;
-    funcWrite _writer;
+    long _lastTHSendMillis = 0;
+    bool _isBusy = false;
     
     void resetBuffer() {
         for(int n = _buflen; n--;) {
@@ -87,6 +100,11 @@ private:
             _buffer[_pos++] = cmd;
         }
     }
+    void writeUINT16(uint16_t value) {
+        _buffer[_pos++] = (value >> 8) & 0xFF;
+        _buffer[_pos++] = value  & 0xFF;
+    }
+    
     void appendStringOnBuffer(const char* string, uint8_t len) {
         for(uint8_t i = 0; i < len; ++i) {
             _buffer[_pos++] = string[i];
@@ -96,17 +114,35 @@ private:
     bool isAckOk() {
         return _buffer[2] == 's';
     }
-    bool isAckError() {
-        return _buffer[2] == 'e';
-    }
     
-public:
     
-    void setWriteFunc(funcWrite writer) {
-        _writer = writer;
+    
+    void updateTHValueIfNeed() {
+        if(millis() -  _lastTHSendMillis > DELAY_SEND_TH_VALUE && !_isBusy) {
+            _lastTHSendMillis = millis();
+            cout << _lastTHSendMillis << endl;
+            if(_onTHValueCallback != NULL) {
+                _onTHValueCallback(&_thValue);
+            }
+            createHeader(TYPE_MSG, CMD_TH_VALUE);
+            writeUINT16(_thValue.temperature);
+            writeUINT16(_thValue.humidity);
+            _onWriteCallback(_buffer, _pos);
+            _status = STATUS_WAIT_ACK;
+            _isBusy = true;
+        }
     }
 
-    Controller(uint8_t* buffer, uint8_t length) : _status(STATUS_DISCONNECTED),_receiveLength(0) {
+    
+public:
+    void setOnWriteCallback(OnWriteCallback onWriteCallback) {
+        _onWriteCallback = onWriteCallback;
+    }
+    void setOnTHValueCallback(OnTHValueCallback onTHValueCallback) {
+        _onTHValueCallback = onTHValueCallback;
+    }
+
+    Controller(uint8_t* buffer, uint8_t length) : _status(STATUS_DISCONNECTED){
         _buflen = length;
         _buffer = buffer;
         resetBuffer();
@@ -117,26 +153,22 @@ public:
         createHeader(TYPE_CONNECT);
         appendStringOnBuffer(key, len);
         _status = STATUS_MAKING_CONNECTION;
-        if(_writer != NULL) {
-            _writer(_buffer, _pos);
+        if(_onWriteCallback != NULL) {
+            _onWriteCallback(_buffer, _pos);
         }
     }
     
-    void startReceive(uint8_t len) {
+    void startReceive() {
         resetBuffer();
         _isBusy = true;
-        _receiveLength = len;
     }
     void receive(uint8_t data) {
         _buffer[_pos++] = data;
-        if(_pos >= _receiveLength) {
-            endReceive();
-        }
     }
     void endReceive() {
         _isBusy = false;
-        if(_status == STATUS_MAKING_CONNECTION) {
-            if(isAckError()) _status = STATUS_ERROR;
+        if(_status == STATUS_MAKING_CONNECTION || _status == STATUS_WAIT_ACK) {
+            if(!isAckOk()) _status = STATUS_ERROR;
             else _status = STATUS_IDLE;
         }
     }
@@ -150,13 +182,29 @@ public:
     bool isWaitData() {
         return _status == STATUS_IDLE;
     }
+    bool isBusy() {
+        return _isBusy;
+    }
+    
+    void respire() {
+        if(!isConnected()) return;
+        updateTHValueIfNeed();
+    }
 };
 
 uint8_t buf[BUF_LEN+1];
+uint8_t ctrlbuf[BUF_LEN+1];
 int sockfd;
-Controller ctrl(buf,BUF_LEN+1) ;
+Controller ctrl(ctrlbuf,BUF_LEN+1) ;
 void write(uint8_t* buffer, uint8_t len) {
     write(sockfd, buffer, len);
+}
+
+int t = 0;
+int h = 0;
+void onThValue( THValue* const th) {
+    th->temperature = t++;
+    th->humidity = th->temperature * 2;
 }
 
 
@@ -191,17 +239,48 @@ int main(int argc, const char * argv[]) {
     }
     printf("connect success\n");
     
-    
-    
-    ctrl.setWriteFunc(write);
+    ctrl.setOnWriteCallback(write);
+    ctrl.setOnTHValueCallback(onThValue);
     ctrl.makeConnection("beom", strlen("beom"));
     
     n = read(sockfd, buf, BUF_LEN);
-    ctrl.startReceive(n);
-    for(int i = 0; i < n; ++i) {
-        ctrl.receive(buf[i]);
+    if(n > 0) {
+        ctrl.startReceive();
+        cout << n << endl;
+        for(int i = 0; i < n; ++i) {
+            cout << buf[i];
+            ctrl.receive(buf[i]);
+        }
+        cout << endl;
+        ctrl.endReceive();
     }
-    cout << "connected : " + ctrl.isConnected()   << endl;
+
+    
+    while(ctrl.isConnected()) {
+        ctrl.respire();
+        if(ctrl.isBusy()) {
+            cout << "recv" << endl;
+            ctrl.startReceive();
+            n = read(sockfd, buf, BUF_LEN);
+            if(n != 0) {
+                cout << n << endl;
+                for(int i = 0; i < n; ++i) {
+                    cout << buf[i];
+                    ctrl.receive(buf[i]);
+                }
+                ctrl.endReceive();
+            } else {
+                break;
+            }
+        }
+    }
+    
+    
+    
+    
+    
+    cout << endl;
+    cout << "connected : " <<  ctrl.isConnected()   << endl;
 
     
     close(sockfd);
@@ -276,73 +355,4 @@ int main(int argc, const char * argv[]) {
     
     delete[] data;
     test2();*/
-}
-
-
-void test2() {
-    printf("Start test2");
-    PacketFrame frame;
-    byte array[20];
-    for(int i = 0; i < 20; ++i) {
-        array[i] = i * 2;
-    }
-    cout << "Source String :  "  << arrayPrint(array, 20) << endl;
-    cout << "Source String length :  "  << 20 << endl << endl;
-    
-    frame.setDataLength(20);
-    for(int i = 0; i < 20; ++i) {
-        frame.pushData(array[i]);
-    }
-    
-    printf("bytes length : %d\n", frame.getDataLength());
-    byte* packet = frame.getBuffer();
-    printf("packet length : %d\n",(int)sizeof(packet));
-    printf("packet length valid check : %d\n",(int)packet[3]);
-    cout << "assert!\n" << (int)packet[3] << ":" << 20 << endl;
-    printf("crc8 : %d\n",(int)packet[24]);
-    byte* data = new byte[frame.getDataLength()];
-    frame.getData(data);
-    cout << "Origin Pakcet :  "  << packet << endl;
-    cout << "Origin String :  "  << arrayPrint(data, 20) << endl;
-    delete[] data;
-    
-    cout << endl;
-    
-    
-    int len = frame.getBufferSize();
-    
-    PacketFrame receiveFrame;
-    for(int i = 0; i < 128; ++i) {
-        receiveFrame.update((byte) 0);
-    }
-    for(int i = 0, n = len; i < n; ++i) {
-        receiveFrame.update(packet[i]);
-    }
-    for(int i = 0; i < 128; ++i) {
-        receiveFrame.update((byte) 0);
-    }
-    cout << "isComplate? " << ((receiveFrame.isReadComplete())?"true":"false") << endl;
-    cout << "isValid? " << ((receiveFrame.isValid())?"true":"false") << endl;
-    data = new byte[receiveFrame.getDataLength()];
-    receiveFrame.getData(data);
-    
-    cout << "Decoded String :  " << receiveFrame.getBuffer() << endl;
-    cout << "Decoded String :  "  << arrayPrint(data, 20) << endl;
-    cout << "assert!\n" << (int)receiveFrame.getBuffer()[3] << ":" << string((char*)data).length() << endl;
-    printf("End test");
-    
-    delete[] data;
-
-    
-}
-
-
-string arrayPrint(byte* array, int len) {
-    string strArray = "";
-    for(int i = 0; i < len; ++i) {
-        strArray += to_string(array[i]);
-        strArray += " ,";
-    }
-    return strArray;
-    
 }
