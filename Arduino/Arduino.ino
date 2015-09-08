@@ -18,7 +18,7 @@
 #define BUFF_SIZE 128
 #define DEBUG 
 
-#define VER 100
+#define VER 107
 #define MODE_WAIT 0
 #define MODE_SETUP 1
 #define MODE_RUN 2
