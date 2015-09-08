@@ -29,8 +29,11 @@ string arrayPrint(byte* array, int len);
 
 
 #define BUF_LEN 128
-#define NIL_VALUE -1000
 
+
+#define NIL_VALUE -1000
+#define DELAY_SEND_TH_VALUE 3000
+#define DELAY_SEND_Water_STATE 1000
 
 long millis() {
 
@@ -52,7 +55,6 @@ typedef struct ControlValues {
 } ControlValues;
 
 
-#define DELAY_SEND_TH_VALUE 3000
 class Controller {
     
 private:
@@ -66,24 +68,33 @@ private:
     };
     enum CMD {
         NONE,
-        CMD_TH_VALUE = 't' // 온도와 습도를 서버로 보내는 명령.
+        CMD_TH_VALUE = 't', // 온도와 습도를 서버로 보내는 명령.
+        CMD_WATER_STATE = 'w' // 물 상태를 서버로 보내는 명령
         
     };
-    enum STATUS {STATUS_DISCONNECTED, STATUS_MAKING_CONNECTION,STATUS_IDLE,STATUS_SEND, STATUS_WAIT_ACK,STATUS_ERROR  };
-
-   
+    enum STATUS {STATUS_DISCONNECTED,
+        STATUS_MAKING_CONNECTION,
+        STATUS_IDLE,
+        STATUS_SEND,
+        STATUS_WAIT_ACK,
+        STATUS_ERROR};
     
 
     STATUS _status;
     ControlValues _controlValues;
     OnWriteCallback _onWriteCallback;
     OnTHValueCallback _onTHValueCallback;
+    OnWaterStateCallback _onWaterStateCallback;
     THValue _thValue;
     uint8_t _pos;
     uint8_t* _buffer;
     uint8_t _buflen;
-    long _lastTHSendMillis = 0;
-    bool _isBusy = false;
+    long _lastReadMillis;
+    long _lastTHSendMillis;
+    long _lastWaterStateSendMillis;
+    bool _isFilledWater;
+    bool _isBusy;
+    
     
     void resetBuffer() {
         for(int n = _buflen; n--;) {
@@ -104,6 +115,9 @@ private:
         _buffer[_pos++] = (value >> 8) & 0xFF;
         _buffer[_pos++] = value  & 0xFF;
     }
+    void writeUINT8(uint8_t value) {
+        _buffer[_pos++] = value  & 0xFF;
+    }
     
     void appendStringOnBuffer(const char* string, uint8_t len) {
         for(uint8_t i = 0; i < len; ++i) {
@@ -115,15 +129,26 @@ private:
         return _buffer[2] == 's';
     }
     
-    
+    void updateWaterStateIfNeed() {
+        if(_lastReadMillis -  _lastWaterStateSendMillis > DELAY_SEND_Water_STATE && !_isBusy) {
+            _lastWaterStateSendMillis = millis();
+            if(_onWaterStateCallback == NULL) return;
+            bool isFilledWater = _onWaterStateCallback();
+            if(isFilledWater == _isFilledWater) return;
+            _isFilledWater = isFilledWater;
+            createHeader(TYPE_MSG, CMD_WATER_STATE);
+            writeUINT8(_isFilledWater);
+            _onWriteCallback(_buffer, _pos);
+            _status = STATUS_WAIT_ACK;
+            _isBusy = true;
+        }
+    }
     
     void updateTHValueIfNeed() {
-        if(millis() -  _lastTHSendMillis > DELAY_SEND_TH_VALUE && !_isBusy) {
+        if(_lastReadMillis -  _lastTHSendMillis > DELAY_SEND_TH_VALUE && !_isBusy) {
             _lastTHSendMillis = millis();
-            cout << _lastTHSendMillis << endl;
-            if(_onTHValueCallback != NULL) {
-                _onTHValueCallback(&_thValue);
-            }
+            if(_onTHValueCallback == NULL) return;
+            _onTHValueCallback(&_thValue);
             createHeader(TYPE_MSG, CMD_TH_VALUE);
             writeUINT16(_thValue.temperature);
             writeUINT16(_thValue.humidity);
@@ -132,7 +157,7 @@ private:
             _isBusy = true;
         }
     }
-
+    
     
 public:
     void setOnWriteCallback(OnWriteCallback onWriteCallback) {
@@ -141,8 +166,12 @@ public:
     void setOnTHValueCallback(OnTHValueCallback onTHValueCallback) {
         _onTHValueCallback = onTHValueCallback;
     }
+    void setOnWaterStateCallback(OnWaterStateCallback onWaterStateCallback) {
+        _onWaterStateCallback = onWaterStateCallback;
+    }
 
-    Controller(uint8_t* buffer, uint8_t length) : _status(STATUS_DISCONNECTED){
+    Controller(uint8_t* buffer, uint8_t length) :
+    _status(STATUS_DISCONNECTED), _lastTHSendMillis(0), _lastReadMillis(0),_lastWaterStateSendMillis(0),_isFilledWater(true), _isBusy(false){
         _buflen = length;
         _buffer = buffer;
         resetBuffer();
@@ -187,8 +216,10 @@ public:
     }
     
     void respire() {
+        _lastReadMillis = millis();
         if(!isConnected()) return;
         updateTHValueIfNeed();
+        updateWaterStateIfNeed();
     }
 };
 
@@ -202,11 +233,15 @@ void write(uint8_t* buffer, uint8_t len) {
 
 int t = 0;
 int h = 0;
+int w = 0;
 void onThValue( THValue* const th) {
     th->temperature = t++;
     th->humidity = th->temperature * 2;
 }
 
+bool onWaterState() {
+    return w++ % 5 == 0;
+}
 
 int main(int argc, const char * argv[]) {
     
@@ -241,6 +276,7 @@ int main(int argc, const char * argv[]) {
     
     ctrl.setOnWriteCallback(write);
     ctrl.setOnTHValueCallback(onThValue);
+    ctrl.setOnWaterStateCallback(onWaterState);
     ctrl.makeConnection("beom", strlen("beom"));
     
     n = read(sockfd, buf, BUF_LEN);

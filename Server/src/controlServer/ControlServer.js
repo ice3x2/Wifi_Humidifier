@@ -16,6 +16,7 @@ var CMD = {
     ERROR : 'e'.charCodeAt(0),
     OK : 's'.charCodeAt(0),
     TH_VALUE : 't'.charCodeAt(0), // 온도와 습도를 받아온다.
+    WATER_STATE : 'w'.charCodeAt(0)
 };
 
 const BUFFER_SIZE = 32;
@@ -31,10 +32,10 @@ function ControlServer(socket) {
         minTemperature : 40,
         minHumidity : 60,
         maxHumidity : 100,
-        water : 0,
         fanPWM : 255,
         powerPWM : 255
     };
+    var _isWaterState = false;
     var _buffer = new Buffer(BUFFER_SIZE);
     var _bufferOffset = 0;
     var _isConnected = false;
@@ -80,6 +81,15 @@ function ControlServer(socket) {
                 _this.onTHValueCallback(_lastTemperature, _lastHumidity);
                 log.i("receive cmd : TH_VALUE");
                 log.v("Temperature : " + _lastTemperature + "  Humidity : " + _lastHumidity);
+                socket.write(createHeader(TYPE.RESPONSE, CMD.OK).slice(0, _bufferOffset));
+                log.i("sendData : response ok");
+            }
+            if(_.isEqual(cmd, CMD.WATER_STATE)) {
+                // m:w[물 상태 - 있음:1, 없음:0 (1byte)]
+                _isWaterState = data.readUInt8(3);
+                _this.onTHValueCallback(_lastTemperature, _lastHumidity);
+                log.i("receive cmd : WATER_STATE");
+                log.v("Water state : " + _isWaterState);
                 socket.write(createHeader(TYPE.RESPONSE, CMD.OK).slice(0, _bufferOffset));
                 log.i("sendData : response ok");
             }
