@@ -8,6 +8,7 @@
 
 #include <iostream>
 #include "ESPResponseChecker.h"
+#include "Controller.h"
 
 using namespace std;
 typedef bool boolean;
@@ -16,7 +17,10 @@ typedef unsigned char uint8_t;
 
 void test2();
 string arrayPrint(byte* array, int len);
-
+long millis() {
+    
+    return (long)time(NULL) * 1000;
+}
 
 
 #include <sys/socket.h>
@@ -29,200 +33,6 @@ string arrayPrint(byte* array, int len);
 
 
 #define BUF_LEN 128
-
-
-#define NIL_VALUE -1000
-#define DELAY_SEND_TH_VALUE 3000
-#define DELAY_SEND_Water_STATE 1000
-
-long millis() {
-
-    return (long)time(NULL) * 1000;
-}
-
-typedef struct THValue {
-    int16_t temperature = NIL_VALUE;
-    int16_t humidity = NIL_VALUE;
-} THValue;
-
-typedef struct ControlValues {
-    uint8_t minTemperature = 40;
-    uint8_t minHumidity = 60;
-    uint8_t maxHumidity = 100;
-    uint8_t water = 0;
-    uint8_t fanPWM = 255;
-    uint8_t powerPWM = 255;
-} ControlValues;
-
-
-class Controller {
-    
-private:
-    typedef void (*OnWriteCallback)(uint8_t*,uint8_t);
-    typedef void (*OnTHValueCallback)(THValue* const _thValue);
-    typedef bool (*OnWaterStateCallback)();
-    enum TYPE { // 데이터 타입.
-        TYPE_CONNECT = 'k', // 연결
-        TYPE_MSG = 'm', // 메세지
-        TYPE_HEART_BEAT = 'h' // 주기적으로 주고 받는 Heart beat
-    };
-    enum CMD {
-        NONE,
-        CMD_TH_VALUE = 't', // 온도와 습도를 서버로 보내는 명령.
-        CMD_WATER_STATE = 'w' // 물 상태를 서버로 보내는 명령
-        
-    };
-    enum STATUS {STATUS_DISCONNECTED,
-        STATUS_MAKING_CONNECTION,
-        STATUS_IDLE,
-        STATUS_SEND,
-        STATUS_WAIT_ACK,
-        STATUS_ERROR};
-    
-
-    STATUS _status;
-    ControlValues _controlValues;
-    OnWriteCallback _onWriteCallback;
-    OnTHValueCallback _onTHValueCallback;
-    OnWaterStateCallback _onWaterStateCallback;
-    THValue _thValue;
-    uint8_t _pos;
-    uint8_t* _buffer;
-    uint8_t _buflen;
-    long _lastReadMillis;
-    long _lastTHSendMillis;
-    long _lastWaterStateSendMillis;
-    bool _isFilledWater;
-    bool _isBusy;
-    
-    
-    void resetBuffer() {
-        for(int n = _buflen; n--;) {
-            _buffer[n] = 0;
-        }
-        _pos = 0;
-    }
-    
-    void createHeader(TYPE type, CMD cmd = NONE) {
-        resetBuffer();
-        _buffer[_pos++] = type;
-        _buffer[_pos++] = ':';
-        if(cmd != NONE) {
-            _buffer[_pos++] = cmd;
-        }
-    }
-    void writeUINT16(uint16_t value) {
-        _buffer[_pos++] = (value >> 8) & 0xFF;
-        _buffer[_pos++] = value  & 0xFF;
-    }
-    void writeUINT8(uint8_t value) {
-        _buffer[_pos++] = value  & 0xFF;
-    }
-    
-    void appendStringOnBuffer(const char* string, uint8_t len) {
-        for(uint8_t i = 0; i < len; ++i) {
-            _buffer[_pos++] = string[i];
-        }
-    }
-    
-    bool isAckOk() {
-        return _buffer[2] == 's';
-    }
-    
-    void updateWaterStateIfNeed() {
-        if(_lastReadMillis -  _lastWaterStateSendMillis > DELAY_SEND_Water_STATE && !_isBusy) {
-            _lastWaterStateSendMillis = millis();
-            if(_onWaterStateCallback == NULL) return;
-            bool isFilledWater = _onWaterStateCallback();
-            if(isFilledWater == _isFilledWater) return;
-            _isFilledWater = isFilledWater;
-            createHeader(TYPE_MSG, CMD_WATER_STATE);
-            writeUINT8(_isFilledWater);
-            _onWriteCallback(_buffer, _pos);
-            _status = STATUS_WAIT_ACK;
-            _isBusy = true;
-        }
-    }
-    
-    void updateTHValueIfNeed() {
-        if(_lastReadMillis -  _lastTHSendMillis > DELAY_SEND_TH_VALUE && !_isBusy) {
-            _lastTHSendMillis = millis();
-            if(_onTHValueCallback == NULL) return;
-            _onTHValueCallback(&_thValue);
-            createHeader(TYPE_MSG, CMD_TH_VALUE);
-            writeUINT16(_thValue.temperature);
-            writeUINT16(_thValue.humidity);
-            _onWriteCallback(_buffer, _pos);
-            _status = STATUS_WAIT_ACK;
-            _isBusy = true;
-        }
-    }
-    
-    
-public:
-    void setOnWriteCallback(OnWriteCallback onWriteCallback) {
-        _onWriteCallback = onWriteCallback;
-    }
-    void setOnTHValueCallback(OnTHValueCallback onTHValueCallback) {
-        _onTHValueCallback = onTHValueCallback;
-    }
-    void setOnWaterStateCallback(OnWaterStateCallback onWaterStateCallback) {
-        _onWaterStateCallback = onWaterStateCallback;
-    }
-
-    Controller(uint8_t* buffer, uint8_t length) :
-    _status(STATUS_DISCONNECTED), _lastTHSendMillis(0), _lastReadMillis(0),_lastWaterStateSendMillis(0),_isFilledWater(true), _isBusy(false){
-        _buflen = length;
-        _buffer = buffer;
-        resetBuffer();
-    };
-    
-    void makeConnection(const char* key, uint8_t len) {
-        if(_status != STATUS_DISCONNECTED) return;
-        createHeader(TYPE_CONNECT);
-        appendStringOnBuffer(key, len);
-        _status = STATUS_MAKING_CONNECTION;
-        if(_onWriteCallback != NULL) {
-            _onWriteCallback(_buffer, _pos);
-        }
-    }
-    
-    void startReceive() {
-        resetBuffer();
-        _isBusy = true;
-    }
-    void receive(uint8_t data) {
-        _buffer[_pos++] = data;
-    }
-    void endReceive() {
-        _isBusy = false;
-        if(_status == STATUS_MAKING_CONNECTION || _status == STATUS_WAIT_ACK) {
-            if(!isAckOk()) _status = STATUS_ERROR;
-            else _status = STATUS_IDLE;
-        }
-    }
-    bool checkReadTimeout() {
-        return false;
-    }
-    
-    bool isConnected() {
-        return _status != STATUS_DISCONNECTED && _status != STATUS_ERROR && _status != STATUS_MAKING_CONNECTION;
-    }
-    bool isWaitData() {
-        return _status == STATUS_IDLE;
-    }
-    bool isBusy() {
-        return _isBusy;
-    }
-    
-    void respire() {
-        _lastReadMillis = millis();
-        if(!isConnected()) return;
-        updateTHValueIfNeed();
-        updateWaterStateIfNeed();
-    }
-};
-
 uint8_t buf[BUF_LEN+1];
 uint8_t ctrlbuf[BUF_LEN+1];
 int sockfd;
@@ -237,6 +47,11 @@ int w = 0;
 void onThValue( THValue* const th) {
     th->temperature = t++;
     th->humidity = th->temperature * 2;
+}
+
+void onChangedControlValue(const ControlValues* const value) {
+    cout << (int)value->minTemperature << '\n' << (int)value->minHumidity << '\n' <<(int) value->maxHumidity << '\n'
+    <<(int) value->powerPWM << '\n' << (int)value->fanPWM << endl;
 }
 
 bool onWaterState() {
@@ -262,7 +77,7 @@ int main(int argc, const char * argv[]) {
     
     server_addr.sin_family = AF_INET;
     //주소 체계를 AF_INET 로 선택
-    server_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    server_addr.sin_addr.s_addr = inet_addr("192.168.0.12");
     //32비트의 IP주소로 변환
     server_addr.sin_port = htons(11700);
     //daytime 서비스 포트 번호
@@ -277,6 +92,7 @@ int main(int argc, const char * argv[]) {
     ctrl.setOnWriteCallback(write);
     ctrl.setOnTHValueCallback(onThValue);
     ctrl.setOnWaterStateCallback(onWaterState);
+    ctrl.setOnChangedControlCallback(onChangedControlValue);
     ctrl.makeConnection("beom", strlen("beom"));
     
     n = read(sockfd, buf, BUF_LEN);
@@ -284,16 +100,31 @@ int main(int argc, const char * argv[]) {
         ctrl.startReceive();
         cout << n << endl;
         for(int i = 0; i < n; ++i) {
-            cout << buf[i];
             ctrl.receive(buf[i]);
         }
         cout << endl;
         ctrl.endReceive();
     }
-
+    
+    n = read(sockfd, buf, BUF_LEN);
+    if(n > 0) {
+        ctrl.startReceive();
+        cout << n << endl;
+        for(int i = 0; i < n; ++i) {
+            ctrl.receive(buf[i]);
+        }
+        cout << endl;
+        ctrl.endReceive();
+    }
+    ctrl.respire(millis());
+    ctrl.respire(millis());
+    ctrl.respire(millis());
+    ctrl.respire(millis());
+    ctrl.respire(millis());
+    ctrl.respire(millis());
     
     while(ctrl.isConnected()) {
-        ctrl.respire();
+        ctrl.respire(millis());
         if(ctrl.isBusy()) {
             cout << "recv" << endl;
             ctrl.startReceive();

@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		9F91D5241B9FC49000FA2624 /* Controller.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9F91D5221B9FC49000FA2624 /* Controller.cpp */; };
 		9FDA00041B3DB69F005D2512 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9FDA00031B3DB69F005D2512 /* main.cpp */; };
 		9FF0E18B1B9C7BE300D2687D /* ESPResponseChecker.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9FF0E1891B9C7BE300D2687D /* ESPResponseChecker.cpp */; };
 /* End PBXBuildFile section */
@@ -24,6 +25,8 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		9F91D5221B9FC49000FA2624 /* Controller.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Controller.cpp; sourceTree = "<group>"; };
+		9F91D5231B9FC49000FA2624 /* Controller.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Controller.h; sourceTree = "<group>"; };
 		9FDA00001B3DB69F005D2512 /* FrameTest */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = FrameTest; sourceTree = BUILT_PRODUCTS_DIR; };
 		9FDA00031B3DB69F005D2512 /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
 		9FF0E1891B9C7BE300D2687D /* ESPResponseChecker.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ESPResponseChecker.cpp; sourceTree = "<group>"; };
@@ -55,6 +58,8 @@
 				9FDA00031B3DB69F005D2512 /* main.cpp */,
 				9FF0E1891B9C7BE300D2687D /* ESPResponseChecker.cpp */,
 				9FF0E18A1B9C7BE300D2687D /* ESPResponseChecker.h */,
+				9F91D5221B9FC49000FA2624 /* Controller.cpp */,
+				9F91D5231B9FC49000FA2624 /* Controller.h */,
 			);
 			path = FrameTest;
 			sourceTree = "<group>";
@@ -124,6 +129,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				9FDA00041B3DB69F005D2512 /* main.cpp in Sources */,
+				9F91D5241B9FC49000FA2624 /* Controller.cpp in Sources */,
 				9FF0E18B1B9C7BE300D2687D /* ESPResponseChecker.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
