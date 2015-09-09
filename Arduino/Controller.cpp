@@ -3,7 +3,6 @@
 
 
 #define NIL_VALUE -1000
-#define CMD_POS 2
 #define DELAY_SEND_TH_VALUE 3000
 #define DELAY_SEND_Water_STATE 1000
 
@@ -15,27 +14,24 @@ void Controller::resetBuffer() {
     _pos = 0;
 }
     
-void Controller::createHeader(TYPE type, CMD cmd) {
+void Controller::createHeader(CMD cmd) {
     resetBuffer();
-    _buffer[_pos++] = type;
+    _buffer[_pos++] = cmd;
     _buffer[_pos++] = ':';
-    if(cmd != NONE) {
-        _buffer[_pos++] = cmd;
-    }
 }
 void Controller::writeUINT16(uint16_t value) {
     _buffer[_pos++] = (value >> 8) & 0xFF;
     _buffer[_pos++] = value  & 0xFF;
 }
 void Controller::readControlValues() {
-    _controlValues.minTemperature = readUINT16(3);
-    _controlValues.minHumidity = readUINT16(5);
-    _controlValues.maxHumidity = readUINT16(7);
+    _controlValues.minTemperature = readINT16(2);
+    _controlValues.minHumidity = readINT16(4);
+    _controlValues.maxHumidity = readINT16(6);
+    _controlValues.fanPWM = _buffer[8];
     _controlValues.fanPWM = _buffer[9];
-    _controlValues.fanPWM = _buffer[10];
-    _pos = 11;
+    _pos = 10;
 }
-uint16_t Controller::readUINT16(uint8_t offset) {
+int16_t Controller::readINT16(uint8_t offset) {
     return (_buffer[offset + 1]<<8)
     + _buffer[offset];
 }
@@ -53,7 +49,7 @@ void Controller::appendStringOnBuffer(const char* string, uint8_t len) {
     
 void Controller::onUpdateControlValueIfNeed() {
     if(_status == STATUS_SEND_ACK_FOR_CHANGED_CONTOL_VALUES) {
-        createHeader(TYPE_ACK,CMD_OK);
+        createHeader(CMD_RESPONSE_OK);
         _onWriteCallback(_buffer, _pos);
         if(_onChangedControlValuesCallback  != NULL) {
             _onChangedControlValuesCallback(&_controlValues);
@@ -71,7 +67,7 @@ void Controller::updateWaterStateIfNeed() {
         bool isFilledWater = _onWaterStateCallback();
         if(isFilledWater == _isFilledWater) return;
         _isFilledWater = isFilledWater;
-        createHeader(TYPE_MSG, CMD_WATER_STATE);
+        createHeader(CMD_WATER_STATE);
         writeUINT8(_isFilledWater);
         _onWriteCallback(_buffer, _pos);
     }
@@ -82,11 +78,25 @@ void Controller::updateTHValueIfNeed() {
         _lastTHSendMillis = _lastReadMillis;
         if(_onTHValueCallback == NULL) return;
         _onTHValueCallback(&_thValue);
-        createHeader(TYPE_MSG, CMD_TH_VALUE);
+        createHeader(CMD_TH_VALUE);
         writeUINT16(_thValue.temperature);
         writeUINT16(_thValue.humidity);
         _onWriteCallback(_buffer, _pos);
+        computeAndUpdatePWMControl();
     }
+}
+
+void Controller::computeAndUpdatePWMControl() {
+  if(_thValue.temperature == NIL_VALUE || _thValue.humidity == NIL_VALUE) return;
+  if(_thValue.humidity < _controlValues.minHumidity && !_isOnPower) {
+     _isOnPower = true;
+  }
+  else if(_thValue.humidity > _controlValues.maxHumidity && _isOnPower) {
+     _isOnPower = false;
+  }
+  if(_isOnPower && _onPWMControlCallback != NULL) {
+     _onPWMControlCallback(_controlValues.powerPWM,_controlValues.fanPWM);
+  }
 }
     
 
@@ -101,7 +111,7 @@ _status(STATUS_DISCONNECTED), _lastTHSendMillis(0), _lastReadMillis(0),_lastWate
 
 void Controller::makeConnection(const char* key, uint8_t len) {
     if(_status != STATUS_DISCONNECTED) return;
-    createHeader(TYPE_CONNECT);
+    createHeader(CMD_CONNECT_KEY);
     appendStringOnBuffer(key, len);
     _status = STATUS_MAKING_CONNECTION;
     if(_onWriteCallback != NULL) {
@@ -118,21 +128,14 @@ void Controller::receive(uint8_t data) {
 }
 void Controller::endReceive() {
     _isBusy = false;
-    if(_status == STATUS_MAKING_CONNECTION) {
-        if(_buffer[CMD_POS] == CMD_CONTROL_DATA) {
-            _status = STATUS_IDLE;
-            _isBusy = true;
-            readControlValues();
-            _status = STATUS_SEND_ACK_FOR_CHANGED_CONTOL_VALUES;
-            resetBuffer();
-        } else {
-            _status = STATUS_ERROR;
-        }
-    } else if(_buffer[CMD_POS] == CMD_CONTROL_DATA) {
-        _isBusy = true;
-        readControlValues();
-        _status = STATUS_SEND_ACK_FOR_CHANGED_CONTOL_VALUES;
-        resetBuffer();
+    if(_buffer[0] == CMD_CONTROL_DATA) {
+       _status = STATUS_IDLE;
+       _isBusy = true;
+       readControlValues();
+       _status = STATUS_SEND_ACK_FOR_CHANGED_CONTOL_VALUES;
+       resetBuffer();
+    } else if(_buffer[0] == CMD_RESPONSE_ERROR) {
+       _status = STATUS_ERROR; 
     }
 }
 

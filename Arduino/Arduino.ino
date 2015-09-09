@@ -65,10 +65,11 @@ void sendData(const char* data,int length,int ipdID = -1);
 void connectServer();
 void onThValueCallback(THValue* const th);
 void onChangedControlValueCallback(const ControlValues* const value);
+void onPWMControlCallback(uint8_t powerPWM, uint8_t fanPWM);
 void onWriteCallback(uint8_t* buffer, uint8_t len);
 bool onWaterStateCallback();
-//bool _isLink = false;
 void resetBuffer();
+
 uint8_t _buffer[BUFF_SIZE];
 char _httpPacket[142] = "HTTP/1.0 200 OK\r\nContent-Type: text/plain\r\n\r\n";
 uint8_t _bufferIdx = 0;
@@ -81,6 +82,7 @@ CONFIG _config;
 SoftwareSerial wifi(WIFI_RX, WIFI_TX);
 ESPResponseChecker _resChecker;
 Controller _ctrl(_buffer,BUFF_SIZE);
+
 
 
 void setup() {
@@ -108,7 +110,8 @@ void setup() {
   _ctrl.setOnTHValueCallback(onThValueCallback);
   _ctrl.setOnWaterStateCallback(onWaterStateCallback);
   _ctrl.setOnChangedControlCallback(onChangedControlValueCallback);
-
+  _ctrl.setOnPWMControlCallback(onPWMControlCallback);
+  
   if(_config.mode == MODE_SETUP) {
     intoSetupMode(true);
   } else if(_config.mode == MODE_RUN) {
@@ -378,43 +381,6 @@ bool connectAP() {
 
 
 
-void onThValueCallback(THValue* const th) {
-    DHT22_ERROR_t errorCode = _dht22.readData();
-    if(errorCode == DHT_ERROR_NONE || errorCode  == DHT_ERROR_CHECKSUM) {
-        th->temperature = _dht22.getTemperatureC();
-        th->humidity = _dht22.getHumidity();
-    } else {
-      // 에러.
-      th->humidity = NIL_VALUE;
-      th->humidity = NIL_VALUE;
-    }
-}
-
-void onChangedControlValueCallback(ControlValues* const value) {
-    _controlValues = value;
-    Serial.println("_controlValues");
-    Serial.print("minTemperature : ");
-    Serial.println(_controlValues->minTemperature);
-    Serial.print("minHumidity : ");
-    Serial.println(_controlValues->minHumidity);
-    Serial.print("maxHumidity : ");
-    Serial.println(_controlValues->maxHumidity);
-    Serial.print("fanPWM : ");
-    Serial.println(_controlValues->fanPWM);
-    Serial.print("powerPWM : ");
-    Serial.println(_controlValues->powerPWM);
-    
-}
-
-void onWriteCallback(uint8_t* buffer, uint8_t len) {
-    flushForEsp8266Buffer();
-    sendData((const char*)buffer,len);
-    flushForEsp8266Buffer();
-}
-
-bool onWaterStateCallback() {
-    return analogRead(4) % 2;
-}
 
 uint8_t sendATCmd(const char* cmd,int timeout,uint8_t* buffer, int bufSize) {
   boolean isBufferAllocationed = false;
@@ -535,3 +501,48 @@ void printConfig(CONFIG* config) {
 }
 
 
+
+
+void onThValueCallback(THValue* const th) {
+    DHT22_ERROR_t errorCode = _dht22.readData();
+    if(errorCode == DHT_ERROR_NONE || errorCode  == DHT_ERROR_CHECKSUM) {
+        th->temperature = _dht22.getTemperatureC() * 10;
+        th->humidity = _dht22.getHumidity() * 10;
+    } else {
+      // 에러.
+      th->humidity = NIL_VALUE;
+      th->humidity = NIL_VALUE;
+    }
+}
+
+void onChangedControlValueCallback(ControlValues* const value) {
+    _controlValues = value;
+    Serial.println("_controlValues");
+    Serial.print("minTemperature : ");
+    Serial.println(_controlValues->minTemperature);
+    Serial.print("minHumidity : ");
+    Serial.println(_controlValues->minHumidity);
+    Serial.print("maxHumidity : ");
+    Serial.println(_controlValues->maxHumidity);
+    Serial.print("fanPWM : ");
+    Serial.println(_controlValues->fanPWM);
+    Serial.print("powerPWM : ");
+    Serial.println(_controlValues->powerPWM);
+}
+
+void onPWMControlCallback(uint8_t powerPWM, uint8_t fanPWM) {
+  Serial.println(powerPWM);
+  Serial.println(fanPWM);
+  analogWrite(PW_CTR, powerPWM); 
+  analogWrite(FAN_CTR, fanPWM);
+}
+
+void onWriteCallback(uint8_t* buffer, uint8_t len) {
+    flushForEsp8266Buffer();
+    sendData((const char*)buffer,len);
+    flushForEsp8266Buffer();
+}
+
+bool onWaterStateCallback() {
+    return analogRead(WATERGAUGE_PIN) > 200;
+}

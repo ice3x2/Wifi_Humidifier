@@ -16,10 +16,8 @@
 
 
 #define NIL_VALUE -1000
-#define CMD_POS 2
 #define DELAY_SEND_TH_VALUE 5000
 #define DELAY_SEND_Water_STATE 1000
-
 
 
 typedef struct THValue {
@@ -28,9 +26,9 @@ typedef struct THValue {
 } THValue;
 
 typedef struct ControlValues {
-    uint8_t minTemperature = 40;
-    uint8_t minHumidity = 60;
-    uint8_t maxHumidity = 100;
+    int16_t minTemperature = 40;
+    int16_t minHumidity = 60;
+    int16_t maxHumidity = 100;
     uint8_t fanPWM = 255;
     uint8_t powerPWM = 255;
 } ControlValues;
@@ -39,24 +37,18 @@ typedef struct ControlValues {
 class Controller {
     
 private:
+    typedef void (*OnPWMControlCallback)(uint8_t,uint8_t);
     typedef void (*OnWriteCallback)(uint8_t*,uint8_t);
     typedef void (*OnTHValueCallback)(THValue* const _thValue);
     typedef bool (*OnWaterStateCallback)();
     typedef void (*OnChangedControlValuesCallback)(ControlValues* const);
-    enum TYPE { // 데이터 타입.
-        TYPE_CONNECT = 'k', // 연결
-        TYPE_MSG = 'm', // 메세지
-        TYPE_HEART_BEAT = 'h', // 주기적으로 주고 받는 Heart beat
-        TYPE_ACK = 'r'
-    };
     enum CMD {
-        NONE,
         CMD_TH_VALUE = 't', // 온도와 습도를 서버로 보내는 명령.
         CMD_WATER_STATE = 'w', // 물 상태를 서버로 보내는 명령
-        CMD_CONTROL_DATA = 'c',
-        CMD_OK = 's'
-        
-        
+        CMD_CONTROL_DATA = 'c', // 서버에서 받아오는 제어 데이터. 
+        CMD_RESPONSE_OK = 'r',
+        CMD_RESPONSE_ERROR = 'e',
+        CMD_CONNECT_KEY = 'k'
     };
     enum STATUS {STATUS_DISCONNECTED,
         STATUS_MAKING_CONNECTION,
@@ -70,6 +62,7 @@ private:
     OnWriteCallback _onWriteCallback;
     OnTHValueCallback _onTHValueCallback;
     OnWaterStateCallback _onWaterStateCallback;
+    OnPWMControlCallback _onPWMControlCallback;
     OnChangedControlValuesCallback _onChangedControlValuesCallback;
     THValue _thValue;
     uint8_t _pos;
@@ -79,21 +72,24 @@ private:
     long _lastTHSendMillis;
     long _lastWaterStateSendMillis;
     bool _isFilledWater;
+    bool _isOnPower;
     bool _isBusy;
-    
-    
     void resetBuffer();
-    void createHeader(TYPE type, CMD cmd = NONE);
+    void createHeader(CMD cmd);
     void writeUINT16(uint16_t value);
     void readControlValues();
-    uint16_t readUINT16(uint8_t offset);
+    int16_t readINT16(uint8_t offset);
     void writeUINT8(uint8_t value);
     void appendStringOnBuffer(const char* string, uint8_t len);
     void onUpdateControlValueIfNeed();
     void updateWaterStateIfNeed();
     void updateTHValueIfNeed();
+    void computeAndUpdatePWMControl();
     
 public:
+    inline void setOnPWMControlCallback(OnPWMControlCallback onPWMControlCallback) {
+        _onPWMControlCallback = onPWMControlCallback;
+    }
     inline void setOnWriteCallback(OnWriteCallback onWriteCallback) {
         _onWriteCallback = onWriteCallback;
     }
