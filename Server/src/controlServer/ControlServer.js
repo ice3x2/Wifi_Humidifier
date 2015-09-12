@@ -55,10 +55,8 @@ function ControlServer(socket) {
             log.i("receive type : ack ");
             if(!_isConnected) return;
             if(_.isEqual(cmd, CMD.OK) && _onSendControlDataCallback != null) {
-                log.w("receive cmd : Ack for SendControlData ");
                 _onSendControlDataCallback(true);
             } else if(_onSendControlDataCallback != null) {
-                log.w("receive cmd : Ack error for SendControlData ");
                 _onSendControlDataCallback(false);
             }
             _onSendControlDataCallback = null;
@@ -133,9 +131,6 @@ function ControlServer(socket) {
         _buffer.writeUInt8(_controlValues.powerPWM,9);
         _bufferOffset = 10;
         return _buffer;
-
-
-
     }
 
 };

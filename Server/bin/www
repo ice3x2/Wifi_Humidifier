@@ -25,24 +25,13 @@ properties.parse (".properties", options, function (error, obj){
   console.log (obj);
   global.__properties = obj;
   startWebServer();
-  startTCPServer();
+  //startTCPServer();
 });
 
 
 function startTCPServer() {
   var server =require('net').createServer(_include("ControlServer")).listen(__properties.control.port);
-  server.on('listening',function(){
-    console.log('Server is listening on port');
-  });
-  server.on('connection',function(socket){
-    console.log('Server has a new connection');
-  });
-  server.on('close',function(){
-    console.log('Server is now closed');
-  });
-  server.on('error',function(err){
-    console.log('Error occured:',err.message);
-  });
+
 }
 
 function startWebServer() {

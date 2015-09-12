@@ -42,6 +42,7 @@ private:
     typedef void (*OnTHValueCallback)(THValue* const _thValue);
     typedef bool (*OnWaterStateCallback)();
     typedef void (*OnChangedControlValuesCallback)(ControlValues* const);
+
     enum CMD {
         CMD_TH_VALUE = 't', // 온도와 습도를 서버로 보내는 명령.
         CMD_WATER_STATE = 'w', // 물 상태를 서버로 보내는 명령
@@ -56,7 +57,6 @@ private:
         STATUS_SEND_ACK_FOR_CHANGED_CONTOL_VALUES,
         STATUS_ERROR};
     
-    
     STATUS _status;
     ControlValues _controlValues;
     OnWriteCallback _onWriteCallback;
@@ -66,6 +66,7 @@ private:
     OnChangedControlValuesCallback _onChangedControlValuesCallback;
     THValue _thValue;
     uint8_t _pos;
+    char _sessionValue[8];
     uint8_t* _buffer;
     uint8_t _buflen;
     long _lastReadMillis;

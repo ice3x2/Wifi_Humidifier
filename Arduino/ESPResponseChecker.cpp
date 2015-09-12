@@ -17,7 +17,7 @@ void ESPResponseChecker::removeStatus(uint8_t status) {
     _cmpStatus &= ~status;
 }
 
-uint8_t ESPResponseChecker::eqaulCharInResStr(uint8_t backIdx, char ch, char* resStr,  uint8_t length,uint8_t resType) {
+uint16_t ESPResponseChecker::eqaulCharInResStr(uint8_t backIdx, char ch, char* resStr,  uint8_t length,uint16_t resType) {
     if(backIdx >= length || resStr[length - backIdx - 1] == ch) return RES_NONE;
     return resType;
 }
@@ -69,7 +69,7 @@ void ESPResponseChecker::resetIPD() {
     _ipdID = -1;
 }
 
-uint8_t ESPResponseChecker::putCharAndCheck(char ch) {
+uint16_t ESPResponseChecker::putCharAndCheck(char ch) {
     if(_isIPDReadMode) {
         return readIPDMode(ch);
     } else {
@@ -84,6 +84,7 @@ uint8_t ESPResponseChecker::putCharAndCheck(char ch) {
             removeStatus(eqaulCharInResStr(j, _strcmpBuffer[pos], (char*)RES_IPD_STR, RES_IPD_LEN,RES_IPD));
             removeStatus(eqaulCharInResStr(j, _strcmpBuffer[pos], (char*)RES_SEND_OK_STR, RES_SEND_OK_LEN,RES_SEND_OK));
             removeStatus(eqaulCharInResStr(j, _strcmpBuffer[pos], (char*)RES_FAIL_STR, RES_FAIL_LEN,RES_FAIL));
+            
         }
         if((_cmpStatus & RES_IPD) == RES_IPD) {
             _isIPDReadMode = true;

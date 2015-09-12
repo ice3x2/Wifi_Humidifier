@@ -4,10 +4,8 @@
 #include "EspResponseChecker.h"
 #include "Controller.h"
 
-#define WIFI_RX 2 
+#define WIFI_RX 2
 #define WIFI_TX 3
-
-#define PORT 11700 
 
 #define FAN_CTR 9
 #define PW_CTR 6
@@ -18,10 +16,9 @@
 #define WATERGAUGE_PIN 2
 
 #define BUFF_SIZE 128
-#define DEBUG 
+#define DEBUG
 
-#define VER 100
-#define MODE_WAIT 0
+#define VER 104
 #define MODE_SETUP 1
 #define MODE_RUN 2
 #define MODE_ERROR 3
@@ -31,278 +28,357 @@
 #define DELAY_LED_WAIT 1500
 #define DELAY_LED_SETUP 500
 #define DELAY_LED_ERROR 50
-#define DATA_STATE_WAIT 0
-#define DATA_STATE_HTTP_FIND_FPATH 1
-#define DATA_STATE_HTTP_FIND_EPATH 2
-#define DATA_STATE_HTTP_FIND_EOL 3
-#define DATA_STATE_HTTP_SEND_PAGE 4
-#define DATA_STATE_RECEIVE 5
+
+// 제어 값을 담고 있는 _controlValues 배열의 각 인덱스가 의미하는 값을 정의.
+#define CONTROL_VALUE_MIN_HUMIDITY 0
+#define CONTROL_VALUE_MAX_HUMIDITY 1
+#define CONTROL_VALUE_DISCOMFORT_INDEX 2
+#define CONTROL_VALUE_PWR_PWM 3
+#define CONTROL_VALUE_FAN_PWM 4
+
+
+
+#define STATE_PUSH_BUTTON 1
+#define STATE_ON_SEND_STATUS 1 << 1
+#define STATE_ON_SEND_ERROR 1 << 2
+
 
 typedef struct Config {
   uint8_t version = VER;
-  uint8_t mode = MODE_WAIT;
+  uint8_t mode = MODE_SETUP;
   char ssid[16] = "unknown";
   char pass[16] = "unknown";
   char serverAddr[24] = "unknown";
   char key[8] = "unknown";
+  uint32_t port = 80;
   uint8_t tailVersion = VER;
 } CONFIG;
 
 
-uint8_t sendATCmd(const char* cmd,int timeout = 0,uint8_t* buffer = NULL, int bufSize = 16);
+uint16_t sendATCmd(const char* cmd, int timeout = 0, uint8_t* buffer = NULL, int bufSize = 16);
 bool isResCheckOk(uint8_t checkResresult);
 bool checkConfig(CONFIG* config);
-void sendHttpResponse(int ipdID,const char* message,uint8_t length);
+void sendHttpData(int ipdID, const char* message, uint8_t length);
 void intoSetupMode(bool force = false);
 bool intoRunMode();
 void setMode();
 void showStatusLed();
 void saveConfig();
 void loadConfig();
-void flushForEsp8266Buffer();
+//void flushForEsp8266Buffer();
 void printConfig(CONFIG* config);
-void sendData(const char* data,int length,int ipdID = -1);
-void connectServer();
-void onThValueCallback(THValue* const th);
-void onChangedControlValueCallback(const ControlValues* const value);
+void sendData(const char* data, int length, int timeout = -1, int ipdID = -1);
+bool connectServer(int timeout = -1);
+void onReadThValueCallback(THValue* const th);
 void onPWMControlCallback(uint8_t powerPWM, uint8_t fanPWM);
 void onWriteCallback(uint8_t* buffer, uint8_t len);
 bool onWaterStateCallback();
 void resetBuffer();
+uint8_t closeConnection(int ipdID = -1);
 
+
+
+
+
+// 상태값 제어 함수.
+void addState(uint16_t state);
+void removeState(uint16_t state);
+bool isState(uint16_t state);
+
+uint16_t _state = 0;
 uint8_t _buffer[BUFF_SIZE];
-char _httpPacket[142] = "HTTP/1.0 200 OK\r\nContent-Type: text/plain\r\n\r\n";
+uint8_t _controlValues[5] = {0, 0, 255, 255, 255};
+//char _httpPacket[142] = "HTTP/1.0 200 OK\r\nContent-Type: text/plain\r\n\r\n";
 uint8_t _bufferIdx = 0;
 uint8_t _dataState = 0;
 long _lastClickMillis = 0;
 long _lastOnLedMillis = 0;
 DHT22 _dht22(DHT22_PIN);
-ControlValues* _controlValues;
 CONFIG _config;
+THValue _thValue;
 SoftwareSerial wifi(WIFI_RX, WIFI_TX);
 ESPResponseChecker _resChecker;
-Controller _ctrl(_buffer,BUFF_SIZE);
+//Controller _ctrl(_buffer,BUFF_SIZE);
+
 
 
 
 void setup() {
-  pinMode(LED_PIN,OUTPUT);
+  pinMode(LED_PIN, OUTPUT);
   digitalWrite(LED_PIN, HIGH);
   //pinMode(RESET_PIN,INPUT);
   wifi.begin(9600);
-  #ifdef DEBUG
-    Serial.begin(115200);
-    Serial.println("d : Ready..");
-  #endif
+
+  Serial.begin(115200);
+  Serial.println("d : Ready..");
+
   loadConfig();
-  if(!checkConfig(&_config)) {
+  if (!checkConfig(&_config)) {
     _config = Config();
-    #ifdef DEBUG
     printConfig(&_config);
-    #endif
   }
-  #ifdef DEBUG 
   else {
     printConfig(&_config);
   }
-  #endif
-  _ctrl.setOnWriteCallback(onWriteCallback);
-  _ctrl.setOnTHValueCallback(onThValueCallback);
-  _ctrl.setOnWaterStateCallback(onWaterStateCallback);
-  _ctrl.setOnChangedControlCallback(onChangedControlValueCallback);
-  _ctrl.setOnPWMControlCallback(onPWMControlCallback);
-  
-  if(_config.mode == MODE_SETUP) {
+
+  if (_config.mode == MODE_SETUP) {
     intoSetupMode(true);
-  } else if(_config.mode == MODE_RUN) {
-    if(!intoRunMode()) {
+  } else if (_config.mode == MODE_RUN) {
+    if (!intoRunMode()) {
       _config.mode = MODE_ERROR;
     }
+    delay(1000);
+    sendATCmd("AT+CIFSR\r\n");
+    
   }
 }
 
+long _lastSendStatusMillis = 0;
 void loop() {
-   if(analogRead(RESET_PIN) > 400) {   
-      if(_lastClickMillis == 0) {
-         _lastClickMillis = millis();
-      } else if(millis() - _lastClickMillis > DELAY_PUSH_SETUP) {
-        intoSetupMode();
-      }
-   } else if(_config.mode != MODE_SETUP)  {
-      //reset();
-   } else {
-      _lastClickMillis = 0;
-   }
-   showStatusLed();
+  if (analogRead(RESET_PIN) > 1000 && !isState(STATE_ON_SEND_STATUS)) {
+    addState(STATE_PUSH_BUTTON);
+    if (_lastClickMillis == 0) {
+      _lastClickMillis = millis();
+    } else if (millis() - _lastClickMillis > DELAY_PUSH_SETUP) {
+      intoSetupMode();
+    }
+  } else {
+    removeState(STATE_PUSH_BUTTON);
+  }
+  showStatusLed();
+  sendResponseOnSetupMode();
+  sendStatusData();
+  
 
-   if(_config.mode == MODE_RUN) {
-      connectServer(); 
-   }
-   
-   
-   while(wifi.available() && _config.mode == MODE_RUN) {
-      uint8_t data = wifi.read();
-      Serial.write((char)data);
-      uint8_t resStatus =  _resChecker.putCharAndCheck(data);
-      if(resStatus == RES_IPD && _dataState == DATA_STATE_WAIT) {
-          _dataState = DATA_STATE_RECEIVE;
-          _ctrl.startReceive();
-      } else if(_dataState == DATA_STATE_RECEIVE) {
-          _ctrl.receive(data);
-          if(_ctrl.getBufferPos() >= _resChecker.getIpdDataLength()) {
-             _ctrl.endReceive();
-             _resChecker.reset();
-             _dataState = DATA_STATE_WAIT;
-             while(wifi.available()) {
-                wifi.read();
-             }
-             wifi.flush();
-          }
-      }
-   }
-   
-   if(wifi.available() && _config.mode == MODE_SETUP) {
-       uint8_t data = wifi.read();
-        uint8_t resStatus =  _resChecker.putCharAndCheck(data);
-        if(resStatus == RES_IPD) {
-          _dataState = DATA_STATE_HTTP_FIND_FPATH;
-        }
-        else if(_dataState == DATA_STATE_HTTP_FIND_FPATH) {
-          if(data == '/') {
-            _dataState = DATA_STATE_HTTP_FIND_EPATH;
-             resetBuffer();
-            _buffer[_bufferIdx % BUFF_SIZE] = data;
-            _bufferIdx++;
-          }
-        } else if(_dataState == DATA_STATE_HTTP_FIND_EPATH) {
-          if(data == ' ') {
-            _dataState = DATA_STATE_HTTP_FIND_EOL;  
-          } else {
-            _buffer[_bufferIdx % BUFF_SIZE] = data; 
-            _bufferIdx++;
-          }
-        }
-       if(_dataState == DATA_STATE_HTTP_FIND_EOL) {
-          _dataState = DATA_STATE_WAIT;
-          
-          Serial.println("EOL");
-          if(strncmp((char*)_buffer, "/set/", 5) == 0) { 
-            for(int i = 0; i < BUFF_SIZE; ++i){
-              _buffer[i] = _buffer[i + 5]; 
+
+
+  /*if(_ctrl.isConnected() && _dataState == DATA_STATE_WAIT) {
+     _ctrl.respire(millis());
+  }*/
+}
+
+void sendResponseOnSetupMode() {
+   uint8_t ipdID = 0;
+  if (wifi.available() && _config.mode == MODE_SETUP) {
+    uint8_t data = wifi.read();
+    uint8_t resStatus =  _resChecker.putCharAndCheck(data);
+    if (resStatus == RES_IPD) {
+      ipdID = _resChecker.getIpdID();
+      int8_t pos = -1;
+      bool isFindEndGetPath = false;
+      // ipd 반환값을 통하여 가져온 길이만큼 반복한다.
+      long startMillis = millis();
+      for (int i = 0, len = _resChecker.getIpdDataLength(); i < len && millis() - startMillis < 8000;) {
+        // 데이터가 있을 경우.
+        if (wifi.available()) {
+          data = wifi.read();
+          //Serial.print((char)data);
+          // 데이터가 유효할 경우에만 현재 길이 값에 +1 을 해준다.
+          ++i;
+          if(pos >= 0 && data == ' ') {
+            if(pos == 5) {
+               _config.port = atoi((const char *)_buffer);
+               ++pos;
             }
-            Serial.println((char*)_buffer);
-            char *token = strtok((char*)_buffer, "::");
-            int pos = 0;
-            while(token != NULL) {
-              Serial.println(token);
-              if(pos == 0) {
-                strcpy(_config.ssid, token);
-              } else if(pos == 1) {
-                strcpy(_config.pass, token);
-              } else if(pos == 2) {
-                strcpy(_config.serverAddr, token);
-              } else if(pos == 3) {
-                strcpy(_config.key, token);
-              }
-              token = strtok(NULL, "::");
-              ++pos;
-            }
-            if(pos < 3) {
-              sendHttpHelpResponse(_resChecker.getIpdID());
-            } else {
-              int8_t ipdID = _resChecker.getIpdID();
-               flushForEsp8266Buffer();
-               if(!connectAP()) {
-                  sendHttpResponse(ipdID,"Error. Wrong AP SSID or password.",33);
-               } else {
-                  sendHttpResponse(ipdID, "OK. Please reboot.",18);
-                  _config.mode = MODE_RUN;
-                  saveConfig();
-                  _config.mode = MODE_WAIT;
-               }
-            }
-            
-            
-            printConfig(&_config);
+            isFindEndGetPath = true;
+          }
+          if (data == '/' && !isFindEndGetPath) {
+            if (pos == 0 && strcmp((char*)_buffer,"set") != 0)  {
+               Serial.println((char*)_buffer);
+                pos = -64;                
+            }              
+            if (pos == 1) 
+              strcpy(_config.ssid, (const char *)_buffer);
+            if (pos == 2) 
+              strcpy(_config.pass, (const char *)_buffer);
+            if (pos == 3) 
+              strcpy(_config.serverAddr, (const char *)_buffer);  
+            if (pos == 4) 
+              strcpy(_config.key, (const char *)_buffer);
+            if (pos == 5) 
+              _config.port = atoi((const char *)_buffer);
+             pos++;
             resetBuffer();
           } else {
-            sendHttpHelpResponse(_resChecker.getIpdID());
+            _buffer[_bufferIdx++ % BUFF_SIZE] = data;
           }
-       }
-   }
-
-   if(_ctrl.isConnected() && _dataState == DATA_STATE_WAIT) {
-      _ctrl.respire(millis());
-   }
-}
-
-void sendHttpHelpResponse(int ipdID) {
-  sendHttpResponse(ipdID, "URL input for setup.\nhttp://192.168.4.1/set/[AP SSID]::[AP Password]::[server ip]::[server port]",96);
-}
-
-void sendHttpResponse(int ipdID,const char* message,uint8_t length) {
-  flushForEsp8266Buffer();
-  Serial.println("SEND_DATA");
-  const uint8_t httpHeaderLen = 45;
-  const uint8_t httpHeaderBufferLen = 142;
-  for(uint8_t i = httpHeaderLen, j = 0; i < httpHeaderBufferLen; ++i, ++j) {
-    if(j < length) {
-      _httpPacket[i] = message[j];    
-    } else {
-      _httpPacket[i] = 0;
+        }
+      } // end for
+      Serial.println(pos);
+      if (pos < 6) {
+          String cmd = "HTTP/1.0 200 OK\r\nContent-Type: text/plain\r\n\r\nURL input for setup.\nhttp://192.168.4.1/set/[AP SSID]/[Password]/[server ip]/[key]/[port]";
+          sendData(cmd.c_str(), cmd.length(),8000, ipdID);
+          closeConnection(ipdID);
+      } else {  
+          //printConfig(&_config);
+          String cmd = "HTTP/1.0 200 OK\r\nContent-Type: text/plain\r\n\r\n";
+          cmd += "ssid : ";  cmd += _config.ssid; cmd += "\n";
+          cmd += "password : ";  cmd += _config.pass; cmd += "\n";
+          cmd += "server : ";  cmd += _config.serverAddr; cmd += "\n";
+          cmd += "key : ";  cmd += _config.key; cmd += "\n";
+          cmd += "port : ";  cmd += _config.port; cmd += "\n";
+          cmd += "OK. Please reboot."; cmd += "\n";
+          sendData(cmd.c_str(), cmd.length(),8000, ipdID);
+          _config.mode = MODE_RUN;
+          saveConfig();
+          printConfig(&_config);
+          _config.mode = MODE_SETUP;
+          closeConnection(ipdID);
+      }
     }
-  } 
-  sendData(_httpPacket,httpHeaderLen + length,ipdID);
-  String closeCommand = "AT+CIPCLOSE="; 
-  closeCommand+=ipdID; 
-  closeCommand+="\r\n";
-  sendATCmd(closeCommand.c_str());  
+  }
 }
 
-void sendData(const char* data,int length,int ipdID) {
-  long lastMillis = millis();
+uint8_t closeConnection(int ipdID) {
+  String closeCommand = "AT+CIPCLOSE";
+  if(ipdID >= 0) {
+    closeCommand += '=';
+    closeCommand += ipdID;
+  }
+  closeCommand += "\r\n";
+  return sendATCmd(closeCommand.c_str());
+}
+
+void sendStatusData() {
+  if (millis() - _lastSendStatusMillis < 500 || _config.mode != MODE_RUN) {
+    return;
+  }
+  readTHVlaue();
+  uint8_t valuesForRollback[5];
+  memcpy(valuesForRollback, _controlValues, 5);
   _resChecker.reset();
-  wifi.print("AT+CIPSEND=");
-  if(ipdID > -1) {
-    wifi.print(ipdID);  
-    wifi.print(",");  
+  if (isState(STATE_PUSH_BUTTON)) return;
+  addState(STATE_ON_SEND_STATUS);
+  String strStatus =  "GET /data?key=";
+  strStatus += _config.key;
+  strStatus += "&t=";
+  strStatus +=  _thValue.temperature;
+  strStatus += "&h=";
+  strStatus += _thValue.humidity;
+  strStatus += "&w=";
+  strStatus += "0";
+  strStatus += " HTTP/1.0\r\nContent-Type: text/plain\r\nConnection: close\r\n\r\n";
+  if (!connectServer(3000)) {
+    Serial.println("c--error");
+    removeState(STATE_ON_SEND_STATUS);
+    addState(STATE_ON_SEND_ERROR);
+    _lastSendStatusMillis = millis();
+    return;
   }
-  wifi.print(length,DEC);
-  wifi.print("\r\n");
-  while(!wifi.available())  {};
-  while(wifi.available()) {
-    (char)wifi.read();
-  }
-  delay(1);
-  for(int i = 0; i < length; ++i) {
-    wifi.write(data[i]);
-  }
-  wifi.print("\r\n");
-  _resChecker.reset();
-  uint8_t result = RES_NONE;
-  while(result != RES_NONE) {
+  Serial.println("connected server");
+  sendData(strStatus.c_str(), strStatus.length(), 3000);
+  Serial.println("send data");
+  //resetBuffer();
+  //_resChecker.reset();
+  //delay(2000);
+  int8_t posOfControlValue = -1;
+  bool readStart = false;
+  bool isUnliked = false;
+  long startResponseWaitTime = millis();
+  int dataLen = 0;
+  int dataIdx = -1;
+  while (millis() - startResponseWaitTime < 8000) {
     if(wifi.available()) {
       uint8_t data = wifi.read();
-      result = _resChecker.putCharAndCheck(data);
+      Serial.print((char)data);
+       if (!readStart && _resChecker.putCharAndCheck(data) == RES_IPD) {
+          readStart = true;
+          dataLen = _resChecker.getIpdDataLength();
+          dataIdx = 0;
+       }
+       if(dataIdx >= dataLen && _resChecker.putCharAndCheck(data) == RES_UNLINK)  {
+          isUnliked = true;
+          break;
+       }
+       if(readStart) {
+         if(data == '*') {
+           if(posOfControlValue >= 0 && posOfControlValue < 5) {
+              Serial.println("");
+              Serial.println("---");
+              _controlValues[posOfControlValue] = atoi((const char*)_buffer);
+              Serial.println(_controlValues[posOfControlValue]);
+            }
+            posOfControlValue++;
+            resetBuffer();
+          } else {
+            _buffer[_bufferIdx++ % BUFF_SIZE] = data;
+          } 
+          dataIdx++;
+       }
     }
   }
-  flushForEsp8266Buffer();
+  if(!isUnliked) {
+    resetRunMode();
+  }
+  
+  while(wifi.available()) {
+    wifi.read();
+    delay(1);
+  }
+  
+  //flushForEsp8266Buffer();
+  removeState(STATE_ON_SEND_STATUS);
+  Serial.println(posOfControlValue);
+  if (posOfControlValue >= 5) {
+    removeState(STATE_ON_SEND_ERROR);
+  } else {
+     
+    memcpy(_controlValues, valuesForRollback, 5);
+    addState(STATE_ON_SEND_ERROR);
+  }
+  _lastSendStatusMillis = millis();
+  while(wifi.available()) {
+    wifi.read();
+  }
+  sendATCmd("AT\r\n");
+  
+}
+void addState(uint16_t state) {
+  _state = _state | state;
+}
+void removeState(uint16_t state) {
+  _state &= ~state;
+}
+bool isState(uint16_t state) {
+  return state == _state & state ;
 }
 
 
-void flushForEsp8266Buffer() {
-  while(wifi.available()) {
-      wifi.read();
-      delay(1);
+void sendData(const char* data, int length, int timeout, int ipdID) {
+  delay(500);
+  _resChecker.reset();
+  long startMillis = millis();
+  bool isSendMode = false;
+  wifi.print("AT+CIPSEND=");
+  if (ipdID > -1) {
+    wifi.print(ipdID);
+    wifi.print(",");
+  }
+  wifi.print(length, DEC);
+  wifi.print("\r\n");
+  wifi.find(">");
+  delay(20);
+  wifi.print((char*)data);  
+  Serial.println("---- send ok");
+  while(true) {
+    if(wifi.available()) {
+       uint8_t data = wifi.read();
+       if(_resChecker.putCharAndCheck(data) != RES_NONE) {
+          break;
+       }
+    }
   }
 }
+
+
+
 
 /**
  * Buffer 에 있는 내용을 모두 0으로 채운다. memset 함수가 종종 이상하게 동작하여 느러도 이 것으로 대체.
  */
 void resetBuffer() {
   _bufferIdx = 0;
-  for(int i = BUFF_SIZE; i--;) {
+  for (int i = BUFF_SIZE; i--;) {
     _buffer[i] = 0;
   }
 }
@@ -310,36 +386,33 @@ void resetBuffer() {
 
 void showStatusLed() {
   int delayMillis = 0;
-  if(_config.mode == MODE_SETUP) {
+  if (_config.mode == MODE_SETUP) {
     delayMillis = DELAY_LED_SETUP;
   }
-  else if(_config.mode == MODE_RUN) {
+  else if (_config.mode == MODE_RUN) {
     digitalWrite(LED_PIN, LOW);
     return;
   }
-  else if(_config.mode == MODE_WAIT) {
-    delayMillis = DELAY_LED_WAIT;
-  }
-  else if(_config.mode == MODE_ERROR) {
+  else if (_config.mode == MODE_ERROR) {
     delayMillis = DELAY_LED_ERROR;
   }
-  if(millis() - _lastOnLedMillis < delayMillis) {  
-        digitalWrite(LED_PIN, HIGH);
-   } else if(millis() - _lastOnLedMillis < (delayMillis + delayMillis))  {
-      digitalWrite(LED_PIN, LOW);
-   } else if(millis() - _lastOnLedMillis > (delayMillis + delayMillis))  {
-      _lastOnLedMillis = millis();
-      digitalWrite(LED_PIN, HIGH);
-   }
+  if (millis() - _lastOnLedMillis < delayMillis) {
+    digitalWrite(LED_PIN, HIGH);
+  } else if (millis() - _lastOnLedMillis < (delayMillis + delayMillis))  {
+    digitalWrite(LED_PIN, LOW);
+  } else if (millis() - _lastOnLedMillis > (delayMillis + delayMillis))  {
+    _lastOnLedMillis = millis();
+    digitalWrite(LED_PIN, HIGH);
+  }
 }
 void setMode() {
-  if(_config.mode == MODE_SETUP) {
-      intoSetupMode();
+  if (_config.mode == MODE_SETUP) {
+    intoSetupMode();
   }
 }
 
 void intoSetupMode(bool force) {
-  if(_config.mode == MODE_SETUP && !force) return;
+  if (_config.mode == MODE_SETUP && !force) return;
   _config.mode = MODE_SETUP;
   saveConfig();
   sendATCmd("AT+RST\r\n", 2000);
@@ -355,19 +428,38 @@ bool intoRunMode() {
   sendATCmd("AT+RST\r\n", 2000);
   sendATCmd("AT+CWMODE=1\r\n");
   sendATCmd("AT+CIPMUX=0\r\n");
+  sendATCmd("AT+CIPSERVER=0\r\n");
+ 
   return connectAP();
 }
 
-void connectServer() {
-  if(!_ctrl.isUnlinked()) return;
+bool resetRunMode() {
+  _config.mode = MODE_RUN;
+  sendATCmd("AT+RST\r\n", 2000); 
+  return true;
+}
+
+bool checkAP() {
+  resetBuffer();
+  // IP 주소를 가져와서 AP 와 연결이 끊겼다면 재접속 한다.
+  sendATCmd("AT+CIFSR\r\n", 2000, _buffer, BUFF_SIZE); 
+  if(String((char*)_buffer).indexOf("0.0") >= 0) {
+    return connectAP();  
+  }
+}
+
+
+bool connectServer(int timeout) {
   String cmd = "AT+CIPSTART=";
   cmd += "\"TCP\",\"";
   cmd += _config.serverAddr;
   cmd += "\",";
-  cmd += PORT;
+  cmd += _config.port;
   cmd += "\r\n";
-  sendATCmd(cmd.c_str());
-  _ctrl.makeConnection(_config.key, strlen(_config.key));
+  Serial.println(cmd);
+  uint8_t result = sendATCmd(cmd.c_str(), timeout, _buffer, BUFF_SIZE);
+  String resultStr = (char*)_buffer;
+  return resultStr.indexOf("ALREAY CONNECT") > 0 || resultStr.indexOf("Linked") > 0 || result == RES_OK;
 }
 
 bool connectAP() {
@@ -376,60 +468,53 @@ bool connectAP() {
   apCmd += "\",\"";
   apCmd += _config.pass;
   apCmd += "\"\r\n";
-  return sendATCmd(apCmd.c_str()) != RES_ERROR && sendATCmd(apCmd.c_str()) != RES_FAIL;
+  uint8_t result =  sendATCmd(apCmd.c_str());
+  return  result != RES_ERROR && result != RES_FAIL;
 }
 
-
-
-
-uint8_t sendATCmd(const char* cmd,int timeout,uint8_t* buffer, int bufSize) {
-  boolean isBufferAllocationed = false;
+uint16_t sendATCmd(const char* cmd, int timeout, uint8_t* buffer, int bufSize) {
   int bufIdx = 0;
   uint8_t resIdx = 0;
   uint8_t data = 0;
-  uint8_t resStatus = 0;
+  uint16_t resStatus = 0;
   long lastMs = millis();
   _resChecker.reset();
   wifi.print(cmd);
-  if(buffer == NULL) {
-     buffer = new uint8_t[bufSize];
-     isBufferAllocationed = true;
-  }
-  while(!wifi.available() && (millis() - lastMs < timeout || timeout == 0));
-  while(millis() - lastMs < timeout || timeout == 0) {
-    while(wifi.available()) {
-       data = wifi.read();
-       #ifdef DEBUG
-        Serial.write((char)data);
-       #endif
-       buffer[bufIdx % bufSize] = data;
-       bufIdx++;
-       if(timeout == 0) {
-         resStatus = _resChecker.putCharAndCheck(data);
-         if(resStatus == RES_NONE) {
-            resIdx = 0;
-         } else if(resStatus != RES_NONE) {  
-            #ifdef DEBUG
-              Serial.println();
-              if(resStatus == RES_OK) 
-                  Serial.println("d : : OK res checked.");
-              else if(resStatus == RES_ERROR) 
-                  Serial.println("d : : ERROR res check. ");
-              else if(resStatus == RES_NC) 
-                  Serial.println("d : : no change res checked.");
-            #endif          
-            timeout = 1;
-            break;
-         }
-       }
+  while (!wifi.available() && (millis() - lastMs < timeout || timeout == 0));
+  while (millis() - lastMs < timeout || timeout == 0) {
+    while (wifi.available()) {
+      data = wifi.read();
+#ifdef DEBUG
+      Serial.write((char)data);
+#endif
+      if (buffer != NULL) {
+        buffer[bufIdx % bufSize] = data;
+      }
+
+      bufIdx++;
+      if (timeout == 0) {
+        resStatus = _resChecker.putCharAndCheck(data);
+        if (resStatus == RES_NONE) {
+          resIdx = 0;
+        } else if (resStatus != RES_NONE) {
+#ifdef DEBUG
+          Serial.println();
+          if (resStatus == RES_OK)
+            Serial.println("d : : OK res checked.");
+          else if (resStatus == RES_ERROR)
+            Serial.println("d : : ERROR res check. ");
+          else if (resStatus == RES_NC)
+            Serial.println("d : : no change res checked.");
+#endif
+          timeout = 1;
+          break;
+        }
+      }
     }
   }
-  while(wifi.available()) {
-     wifi.read();
+  while (wifi.available()) {
+    wifi.read();
   }
-  if(isBufferAllocationed) {
-    delete[] buffer;  
-  } 
   return resStatus;
 }
 
@@ -445,48 +530,64 @@ bool equalResType(uint8_t refResLen, uint8_t targetResLen) {
 void loadConfig() {
   int offset = 0;
   _config.version = EEPROM.read(offset++);
-  _config.mode = EEPROM.read(offset++);
-  for(int i = 0, n = sizeof(_config.ssid);i < n; ++i)
+  EEPROM.read(offset++);
+  _config.mode = 2;//
+  for (int i = 0, n = sizeof(_config.ssid); i < n; ++i)
     _config.ssid[i] = EEPROM.read(offset++);
-    
-  for(int i = 0, n = sizeof(_config.pass);i < n; ++i)
+
+  for (int i = 0, n = sizeof(_config.pass); i < n; ++i)
     _config.pass[i] = EEPROM.read(offset++);
-    
-  for(int i = 0, n = sizeof(_config.serverAddr);i < n; ++i)
+
+  for (int i = 0, n = sizeof(_config.serverAddr); i < n; ++i)
     _config.serverAddr[i] = EEPROM.read(offset++);
- 
-  for(int i = 0, n = sizeof(_config.key);i < n; ++i)
-   _config.key[i] = EEPROM.read(offset++);
-  
-  _config.tailVersion = EEPROM.read(offset);
+
+  for (int i = 0, n = sizeof(_config.key); i < n; ++i)
+    _config.key[i] = EEPROM.read(offset++);
+
+  uint8_t port[4];
+  port[0] = EEPROM.read(offset++); 
+  port[1] = EEPROM.read(offset++);
+  port[2] = EEPROM.read(offset++);
+  port[3] = EEPROM.read(offset++);
+  _config.port =  (port[0] << 24) + (port[1] << 16) + (port[2] << 8) +  port[3];
+  _config.tailVersion = EEPROM.read(offset++);
+  Serial.print("load offset : ");
+  Serial.println(offset);
 }
 
 
 void saveConfig() {
-  Serial.print("SSID SIZE : ");
-  Serial.println(sizeof(_config.ssid));
   int offset = 0;
   EEPROM.write(offset++, _config.version);
   EEPROM.write(offset++, _config.mode);
-  for(int i = 0, n = sizeof(_config.ssid);i < n; ++i)
+  for (int i = 0, n = sizeof(_config.ssid); i < n; ++i)
     EEPROM.write(offset++, _config.ssid[i]);
-    
-  for(int i = 0, n = sizeof(_config.pass);i < n; ++i)
+
+  for (int i = 0, n = sizeof(_config.pass); i < n; ++i)
     EEPROM.write(offset++, _config.pass[i]);
+
+  for (int i = 0, n = sizeof(_config.serverAddr); i < n; ++i)
+    EEPROM.write(offset++, _config.serverAddr[i]);
+
+  for (int i = 0, n = sizeof(_config.key); i < n; ++i)
+    EEPROM.write(offset++, _config.key[i]);
+
     
-  for(int i = 0, n = sizeof(_config.serverAddr);i < n; ++i)
-    EEPROM.write(offset++, _config.serverAddr[i]);   
-
-  for(int i = 0, n = sizeof(_config.key);i < n; ++i)
-    EEPROM.write(offset++, _config.key[i]);   
-
+  EEPROM.write(offset++, (_config.port >> 24) & 0xff);
+  EEPROM.write(offset++, (_config.port >> 16) & 0xff);
+  EEPROM.write(offset++, (_config.port >> 8) & 0xff);
+  EEPROM.write(offset++, (_config.port >> 0) & 0xff);
 
   EEPROM.write(offset++, _config.tailVersion);
+  Serial.print("save offset : ");
+  Serial.println(offset);
 }
 
 
 
 bool checkConfig(CONFIG* config) {
+  Serial.println(config->tailVersion);
+  Serial.println(config->version);
   return config->tailVersion == VER && config->version == VER;
 }
 
@@ -498,51 +599,39 @@ void printConfig(CONFIG* config) {
   Serial.println("d : pass - " + String(config->pass));
   Serial.println("d : serverAddr - " + String(config->serverAddr));
   Serial.println("d : key - " + String(config->key));
+  Serial.println("d : port - " + String(config->port));
 }
 
 
 
 
-void onThValueCallback(THValue* const th) {
-    DHT22_ERROR_t errorCode = _dht22.readData();
-    if(errorCode == DHT_ERROR_NONE || errorCode  == DHT_ERROR_CHECKSUM) {
-        th->temperature = _dht22.getTemperatureC() * 10;
-        th->humidity = _dht22.getHumidity() * 10;
-    } else {
-      // 에러.
-      th->humidity = NIL_VALUE;
-      th->humidity = NIL_VALUE;
-    }
+void readTHVlaue() {
+  DHT22_ERROR_t errorCode = _dht22.readData();
+  if (errorCode == DHT_ERROR_NONE || errorCode  == DHT_ERROR_CHECKSUM) {
+    _thValue.temperature = _dht22.getTemperatureC() * 10;
+    _thValue.humidity = _dht22.getHumidity() * 10;
+  } else {
+    // 에러.
+    _thValue.humidity = NIL_VALUE;
+    _thValue.humidity = NIL_VALUE;
+  }
 }
 
-void onChangedControlValueCallback(ControlValues* const value) {
-    _controlValues = value;
-    Serial.println("_controlValues");
-    Serial.print("minTemperature : ");
-    Serial.println(_controlValues->minTemperature);
-    Serial.print("minHumidity : ");
-    Serial.println(_controlValues->minHumidity);
-    Serial.print("maxHumidity : ");
-    Serial.println(_controlValues->maxHumidity);
-    Serial.print("fanPWM : ");
-    Serial.println(_controlValues->fanPWM);
-    Serial.print("powerPWM : ");
-    Serial.println(_controlValues->powerPWM);
-}
+
 
 void onPWMControlCallback(uint8_t powerPWM, uint8_t fanPWM) {
-  Serial.println(powerPWM);
-  Serial.println(fanPWM);
-  analogWrite(PW_CTR, powerPWM); 
+  //Serial.println(powerPWM);
+  //Serial.println(fanPWM);
+  analogWrite(PW_CTR, powerPWM);
   analogWrite(FAN_CTR, fanPWM);
 }
 
 void onWriteCallback(uint8_t* buffer, uint8_t len) {
-    flushForEsp8266Buffer();
-    sendData((const char*)buffer,len);
-    flushForEsp8266Buffer();
+  //flushForEsp8266Buffer();
+  sendData((const char*)buffer, len);
+  //flushForEsp8266Buffer();
 }
 
 bool onWaterStateCallback() {
-    return analogRead(WATERGAUGE_PIN) > 200;
-}
+  return analogRead(WATERGAUGE_PIN) < 200;
+}   

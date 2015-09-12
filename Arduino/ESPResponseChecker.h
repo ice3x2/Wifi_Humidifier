@@ -21,8 +21,8 @@
 #define RES_LINK_STR "Link\r\n"
 #define RES_LINK_LEN 6
 #define RES_LINK 0x08
-#define RES_UNLINK_STR "\r\nUnlink"
-#define RES_UNLINK_LEN 8
+#define RES_UNLINK_STR "\nUnlink"
+#define RES_UNLINK_LEN 7
 #define RES_UNLINK 0x10
 #define RES_IPD_STR "\r\n+IPD,"
 #define RES_IPD_LEN 7
@@ -55,7 +55,7 @@ private:
     void resetIPD();
     uint8_t readIPDMode(char ch);
     
-    uint8_t eqaulCharInResStr(uint8_t backIdx, char ch, char* resStr,  uint8_t length,uint8_t resType);
+    uint16_t eqaulCharInResStr(uint8_t backIdx, char ch, char* resStr,  uint8_t length,uint16_t resType);
     
     
     
@@ -64,7 +64,7 @@ public:
     void reset();
     int16_t getIpdID();
     int16_t getIpdDataLength();
-    uint8_t putCharAndCheck(char ch);
+    uint16_t putCharAndCheck(char ch);
 };
 
 

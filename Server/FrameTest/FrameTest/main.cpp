@@ -58,103 +58,16 @@ bool onWaterState() {
     return w++ % 5 == 0;
 }
 
+class StringDeque {
+private:
+    uint8_t _capacity;
+    
+};
+
 int main(int argc, const char * argv[]) {
     
-    ssize_t n;
-    struct sockaddr_in server_addr;
-    //struct sockaddr_in server_addr : 서버의 소켓주소 구조체
     
     
-    
-    if((sockfd = socket(PF_INET, SOCK_STREAM, 0)) < 0) {
-        printf("can't create socket\n");
-        exit(0);
-    }
-    
-    
-    bzero((char *)&server_addr, sizeof(server_addr));
-    //서버의 소켓주소 구조체 server_addr을 NULL로 초기화
-    
-    server_addr.sin_family = AF_INET;
-    //주소 체계를 AF_INET 로 선택
-    server_addr.sin_addr.s_addr = inet_addr("192.168.0.12");
-    //32비트의 IP주소로 변환
-    server_addr.sin_port = htons(11700);
-    //daytime 서비스 포트 번호
-    
-    if(connect(sockfd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
-    {//서버로 연결요청
-        printf("can't connect.\n");
-        exit(0);
-    }
-    printf("connect success\n");
-    
-    ctrl.setOnWriteCallback(write);
-    ctrl.setOnTHValueCallback(onThValue);
-    ctrl.setOnWaterStateCallback(onWaterState);
-    ctrl.setOnChangedControlCallback(onChangedControlValue);
-    ctrl.makeConnection("beom", strlen("beom"));
-    
-    n = read(sockfd, buf, BUF_LEN);
-    if(n > 0) {
-        ctrl.startReceive();
-        cout << n << endl;
-        for(int i = 0; i < n; ++i) {
-            ctrl.receive(buf[i]);
-        }
-        cout << endl;
-        ctrl.endReceive();
-    }
-    
-    n = read(sockfd, buf, BUF_LEN);
-    if(n > 0) {
-        ctrl.startReceive();
-        cout << n << endl;
-        for(int i = 0; i < n; ++i) {
-            ctrl.receive(buf[i]);
-        }
-        cout << endl;
-        ctrl.endReceive();
-    }
-    ctrl.respire(millis());
-    ctrl.respire(millis());
-    ctrl.respire(millis());
-    ctrl.respire(millis());
-    ctrl.respire(millis());
-    ctrl.respire(millis());
-    
-    while(ctrl.isConnected()) {
-        ctrl.respire(millis());
-        if(ctrl.isBusy()) {
-            cout << "recv" << endl;
-            ctrl.startReceive();
-            n = read(sockfd, buf, BUF_LEN);
-            if(n != 0) {
-                cout << n << endl;
-                for(int i = 0; i < n; ++i) {
-                    cout << buf[i];
-                    ctrl.receive(buf[i]);
-                }
-                ctrl.endReceive();
-            } else {
-                break;
-            }
-        }
-    }
-    
-    
-    
-    
-    
-    cout << endl;
-    cout << "connected : " <<  ctrl.isConnected()   << endl;
-
-    
-    close(sockfd);
-    
-    
-    
-    ESPResponseChecker resChecker;
     /*for(int i = 0,n  = sizeof(_buffer); i < n; ++i){
         uint8_t rs = resChecker.putCharAndCheck(_buffer[i]);
         
