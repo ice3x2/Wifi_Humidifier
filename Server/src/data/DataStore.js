@@ -6,7 +6,7 @@ var SimpleDb = require('simple-node-db');
 var persist = require('node-persist');
 var log = include('ColorLog');
 
-const KEY_UPDATE_INFO = "updateInfo";
+const KEY_UPDATE_INFO = "KEY_UPDATE_INFO";
 const KEY_DATA = "data";
 
 var DBController = function() {
@@ -19,7 +19,6 @@ var DBController = function() {
         this.ctrlFan = 0;
         this.time = 0;
         this.arvCount = 0;
-
     };
 
     var _realTimeDatas = [];
@@ -89,9 +88,8 @@ var DBController = function() {
     };
 
     this.putWater = function(value) {
-        log.i("DataStore::putWater()");
+        log.i('DataStore::putWater() -> ' + value);
         _data.warter = value;
-        log.v(_data.warter);
         return _this;
     };
 
@@ -101,10 +99,34 @@ var DBController = function() {
             _data.ctrlFan = 0;
             _data.ctrlPower = 0;
         }
+        _data.discomfort = calcDiscomfortIndex(_data.temperature, _data.humidity);
         _data.time = Date.now();
-        log.i('DataStore::commit() -> '  + JSON.stringify(_data))
+        log.i('DataStore::commit() -> '  + JSON.stringify(_data));
         updateData(_.cloneDeep(_data));
     };
+
+    /**
+     * 최근 데이터를 가져온다.
+     * @returns {*} connection 이라는 멤버가 추가되었는데, 0 일경우 연결이 끊어진 상태다. 그 밖에 1 : 나쁨, 2 : 보통, 3: 좋음.
+     */
+    this.getLatestData = function(){
+        invalidateOldRealTimeData(Date.now());
+        if(_realTimeDatas.length == 0) return {
+            connection : 0
+        };
+        var data = _.takeRight(_realTimeDatas)[0];
+        delete data['arvCount'];
+        delete data['ctrlPower'];
+        delete data['ctrlFan'];
+        if(_realTimeDatas.length > 5) {
+            data.connection = '3';
+        } else if(_realTimeDatas.length >= 3) {
+            data.connection = '2';
+        } else {
+            data.connection = '1';
+        }
+        return data;
+    }
 
 
 
@@ -281,12 +303,12 @@ var DBController = function() {
          if(count == 0) {
              return null;
          }
-         sumData.humidity = sumData.humidity / count;
-         sumData.temperature = sumData.temperature / count;
-         sumData.ctrlPower = sumData.ctrlPower / count;
-         sumData.ctrlFan = sumData.ctrlFan / count;
-         sumData.warter = sumData.warter / count;
-         sumData.discomfort = sumData.discomfort / count;
+         sumData.humidity = toSecondDecimalPlace(sumData.humidity / count);
+         sumData.temperature = toSecondDecimalPlace(sumData.temperature / count);
+         sumData.ctrlPower = toSecondDecimalPlace(sumData.ctrlPower / count);
+         sumData.ctrlFan = toSecondDecimalPlace(sumData.ctrlFan / count);
+         sumData.warter = toSecondDecimalPlace(sumData.warter / count);
+         sumData.discomfort = toSecondDecimalPlace(sumData.discomfort / count);
          if(sumData.arvCount == 0) {
              sumData.arvCount = count;
          }
@@ -317,6 +339,15 @@ var DBController = function() {
         return dateObj;
     }
 
+    /**
+     * 불쾌지수를 구한다.
+     * @param temp 온도
+     * @param humi 습도
+     * @returns {number} 불쾌지수
+     */
+    function calcDiscomfortIndex(temp,humi) {
+        return toSecondDecimalPlace((1.8*temp)-(0.55*(1-humi/100.0)*(1.8*temp-26))+32);
+    }
 
     function appendZero(number) {
         var result = number + "";
@@ -326,6 +357,10 @@ var DBController = function() {
             divider = Math.floor(divider / 10);
         }
         return result;
+    }
+
+    function toSecondDecimalPlace(value) {
+        return Math.floor(value * 100) / 100;
     }
 
     return this;

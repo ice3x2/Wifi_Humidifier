@@ -4,19 +4,18 @@
 
 
 var persist = require('node-persist');
-var dataStore = require('./DataStore')
 var log = include('ColorLog');
 
 
-const KEY_CONTROL_VALUE = "updateInfo";
+const KEY_CONTROL_VALUE = "KEY_CONTROL_VALUE";
 
 var ControlValueStore = function () {
     var _controlValue =  {
         minHumidity : 20,
         maxHumidity : 45,
         thresholdDiscomfort : 80,
-        powerPWM : 255,
-        fanPWM : 255,
+        powerPWM : 255, // 0 또는 200-255 사이의 값.
+        fanPWM : 255, // 0 또는 200-255 사이의 값.
     }
     var _this = this;
 
@@ -48,12 +47,10 @@ var ControlValueStore = function () {
 
     this.setPowerPWM = function(value) {
         _controlValue.powerPWM = value;
-        dataStore.putPowerPWM(value);
         return _this;
     };
     this.setFanPWM = function(value) {
         _controlValue.fanPWM = value;
-        dataStore.putFanPWM(value);
         return _this;
     };
 

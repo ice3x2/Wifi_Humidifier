@@ -7,21 +7,24 @@ var log = include('ColorLog');
 
 const NIL_VALUE = -1000;
 /* GET home page. */
+
+
 router.get('/', function(req, res, next) {
   res.render('index', { title: 'Express' });
 });
 
-router.get('/us', function(req, res, next) {
-  //res.removeHeader('Transfer-Encoding');
-  res.removeHeader('X-Powered-By');
-  res.removeHeader('Connection');
-  res.removeHeader('Transfer-Encoding');
-  res.removeHeader('Date');
-  res.send('* /50/60/80/255/255/').end();
+router.all('/status', function(req, res, next) {
+  log.i("post : " + req.path);
+  res.json(dataStore.getLatestData());
 });
 
-var count = 0;
+router.all('/ctrl', function(req, res, next) {
+  log.i("post : " + req.path);
+  res.json(controlValues.getControlValue());
+});
 
+
+var count = 0;
 router.get("/data", function(req, res, next) {
   //res.removeHeader('Transfer-Encoding');
   console.log("data! : ", ++count);
