@@ -9,6 +9,7 @@ var app = require('../app');
 var debug = require('debug')('Server:server');
 var http = require('http');
 global._ = require('lodash');
+global._rx = require('rx');
 var options = {
   path: true,
   namespaces: true,
@@ -24,8 +25,8 @@ properties.parse (".properties", options, function (error, obj){
   } else
   console.log (obj);
   global.__properties = obj;
+
   startWebServer();
-  //startTCPServer();
 });
 
 

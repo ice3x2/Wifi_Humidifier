@@ -67,7 +67,7 @@ void saveConfig();
 void loadConfig();
 //void flushForEsp8266Buffer();
 void printConfig(CONFIG* config);
-void sendData(const char* data, int length, int timeout = -1, int ipdID = -1);
+bool sendData(const char* data, int length, int timeout = -1, int ipdID = -1);
 bool connectServer(int timeout = -1);
 void onReadThValueCallback(THValue* const th);
 void onPWMControlCallback(uint8_t powerPWM, uint8_t fanPWM);
@@ -147,7 +147,9 @@ void loop() {
   }
   showStatusLed();
   sendResponseOnSetupMode();
-  sendStatusData();
+  if(!sendStatusData()) {
+    checkAP();
+  }
   
 
 
@@ -239,15 +241,15 @@ uint8_t closeConnection(int ipdID) {
   return sendATCmd(closeCommand.c_str());
 }
 
-void sendStatusData() {
+bool sendStatusData() {
   if (millis() - _lastSendStatusMillis < 500 || _config.mode != MODE_RUN) {
-    return;
+    return true;
   }
   readTHVlaue();
   uint8_t valuesForRollback[5];
   memcpy(valuesForRollback, _controlValues, 5);
   _resChecker.reset();
-  if (isState(STATE_PUSH_BUTTON)) return;
+  if (isState(STATE_PUSH_BUTTON)) return true;
   addState(STATE_ON_SEND_STATUS);
   String strStatus =  "GET /data?key=";
   strStatus += _config.key;
@@ -263,10 +265,13 @@ void sendStatusData() {
     removeState(STATE_ON_SEND_STATUS);
     addState(STATE_ON_SEND_ERROR);
     _lastSendStatusMillis = millis();
-    return;
+    return false;
   }
   Serial.println("connected server");
-  sendData(strStatus.c_str(), strStatus.length(), 3000);
+  if(!sendData(strStatus.c_str(), strStatus.length(), 2000)) {
+    resetRunMode();
+    return true;
+  }
   Serial.println("send data");
   //resetBuffer();
   //_resChecker.reset();
@@ -331,6 +336,7 @@ void sendStatusData() {
     wifi.read();
   }
   sendATCmd("AT\r\n");
+  return true;
   
 }
 void addState(uint16_t state) {
@@ -344,11 +350,11 @@ bool isState(uint16_t state) {
 }
 
 
-void sendData(const char* data, int length, int timeout, int ipdID) {
+bool sendData(const char* data, int length, int timeout, int ipdID) {
   delay(500);
   _resChecker.reset();
   long startMillis = millis();
-  bool isSendMode = false;
+  bool isTimeout = true;
   wifi.print("AT+CIPSEND=");
   if (ipdID > -1) {
     wifi.print(ipdID);
@@ -356,18 +362,39 @@ void sendData(const char* data, int length, int timeout, int ipdID) {
   }
   wifi.print(length, DEC);
   wifi.print("\r\n");
-  wifi.find(">");
-  delay(20);
-  wifi.print((char*)data);  
   Serial.println("---- send ok");
-  while(true) {
+  // AT+CIPSEND 명령 전송 에이후 '>' 문자가 출력되기를 기다린다.
+  while(millis() - startMillis < timeout || timeout < 1) {
+    if(wifi.available()) {
+       uint8_t data = wifi.read();
+       isTimeout = false; 
+       break;
+    }
+  }
+  if(isTimeout) {
+    return false;     
+  }
+  startMillis = millis();
+  // > 문자 출력 이후에 20ms 딜레이를 주는 것이 좋다고함.
+  delay(20);
+  isTimeout = true;
+  for(int i = 0; i < length; ++i) {
+    wifi.write(data[i]);    
+  }
+  Serial.println("---- send ok");
+  while(millis() - startMillis < timeout || timeout < 1) {
     if(wifi.available()) {
        uint8_t data = wifi.read();
        if(_resChecker.putCharAndCheck(data) != RES_NONE) {
+          isTimeout = false; 
           break;
        }
     }
   }
+  if(isTimeout) {
+    return false;     
+  }
+  return true;
 }
 
 
@@ -626,11 +653,6 @@ void onPWMControlCallback(uint8_t powerPWM, uint8_t fanPWM) {
   analogWrite(FAN_CTR, fanPWM);
 }
 
-void onWriteCallback(uint8_t* buffer, uint8_t len) {
-  //flushForEsp8266Buffer();
-  sendData((const char*)buffer, len);
-  //flushForEsp8266Buffer();
-}
 
 bool onWaterStateCallback() {
   return analogRead(WATERGAUGE_PIN) < 200;
