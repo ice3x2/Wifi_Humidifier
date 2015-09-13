@@ -1,5 +1,8 @@
 #node.js
 node_modules/
+data_base/
+persist/
+
 
 # Compiled Object files
 *.slo

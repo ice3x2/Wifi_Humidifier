@@ -1,13 +1,37 @@
 var express = require('express');
 var router = express.Router();
 var controlValues = include('ControlValueStore');
-var dataStore = require('../data/DataStore');// include('DataStore');
+var dataStore = include('DataStore');// include('DataStore');
 var log = include('ColorLog');
 
 
-const NIL_VALUE = -1000;
-/* GET home page. */
+router.post('/list', function(req, res, next) {
+  if(_.isEmpty(req.body)) {
+    res.json([]);
+    return;
+  }
+  function subscriber(list) {
+    log.d(list.length)
+    res.json(list);
+  }
+  function error(err) {
+    next(err);
+  }
+  var time = (parseInt(req.body.time) + '' == 'NaN')?Date.now():parseInt(req.body.time);
 
+  if(req.body.type == 'h') {
+    dataStore.readHourRx(time).subscribe(subscriber, error);
+  } else if(req.body.type == 'd') {
+    dataStore.readDayRx(time).subscribe(subscriber, error);
+  } else if(req.body.type == 'm') {
+    dataStore.readMonthRx(time).subscribe(subscriber, error);
+  } else if(req.body.type == 'y') {
+    dataStore.readYearRx(time).subscribe(subscriber, error);
+  } else {
+    res.json([]);
+  }
+
+});
 
 router.get('/', function(req, res, next) {
   res.render('index', { title: 'Express' });

@@ -7,17 +7,12 @@ global._ = require('lodash');
 global._rx = require('rx');
 require('../../import').init('../.',['(.+)test/','(.+)node_modules/','(.+)views/','(.+)gulp/'])
 
-var store = include('DataStore');
 var log = include('ColorLog');
 
 //store.setFanPWM(1).setPowerPWM(1).setMinHumidity(10).setMaxHumidity(50).commit();
 
-var date = new Date();
-date.setHours(new Date(date).getHours() - 1);
-var list =  store.readHour(date);
-log.w(list);
 
-
+console.log(parseInt(100));
 
 //var log = require('../common/ColorLog');
 /*

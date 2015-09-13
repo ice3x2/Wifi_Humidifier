@@ -7,13 +7,15 @@ var persist = require('node-persist');
 var log = include('ColorLog');
 
 const KEY_UPDATE_INFO = "KEY_UPDATE_INFO";
+
 const KEY_DATA = "data";
+
 
 var DBController = function() {
     var DataModel = function(){
         this.temperature = 0;
         this.humidity = 0;
-        this.warter = 0;
+        this.water = 0;
         this.discomfort = 0;
         this.ctrlPower = 0;
         this.ctrlFan = 0;
@@ -22,7 +24,7 @@ var DBController = function() {
     };
 
     var _realTimeDatas = [];
-    var _db = new SimpleDb('../../database');
+    var _db = new SimpleDb('../../data_base');
     var _data = new DataModel();
     var _offsetWrap = {
         offset : 0
@@ -31,6 +33,10 @@ var DBController = function() {
         lastUpdateMs : 0,
     };
     var _this = this;
+
+
+
+
 
 
     persist.initSync();
@@ -89,13 +95,13 @@ var DBController = function() {
 
     this.putWater = function(value) {
         log.i('DataStore::putWater() -> ' + value);
-        _data.warter = value;
+        _data.water = value;
         return _this;
     };
 
     this.commitData = function() {
         // 물이 없거나 또는 전원이 꺼져있는 경우.
-        if(_data.warter <= 0) {
+        if(_data.water <= 0) {
             _data.ctrlFan = 0;
             _data.ctrlPower = 0;
         }
@@ -114,7 +120,7 @@ var DBController = function() {
         if(_realTimeDatas.length == 0) return {
             connection : 0
         };
-        var data = _.takeRight(_realTimeDatas)[0];
+        var data = _.cloneDeep(_.takeRight(_realTimeDatas)[0]);
         delete data['arvCount'];
         delete data['ctrlPower'];
         delete data['ctrlFan'];
@@ -133,9 +139,25 @@ var DBController = function() {
     this.readHourRx = function(startTime) {
         startTime = parseInt(startTime / 3600000) * 3600000;
         var endTime = startTime + 3600000;
-        return readDataListRx(startTime, endTime);
-
+        return readDataListRx(startTime, endTime).map(function(list) {
+            var resultList = _.cloneDeep(list);
+            _.forEach(resultList, function(n) {
+                delete  n['lastUpdated'];
+                delete  n['dateCreated'];
+                delete  n['version'];
+                n.temperature = toSecondDecimalPlace(n.temperature);
+                n.humidity = toSecondDecimalPlace(n.humidity);
+                n.ctrlFan  = toSecondDecimalPlace(n.ctrlFan);
+                n.ctrlPower  = toSecondDecimalPlace(n.ctrlPower);
+                n.discomfort  = toSecondDecimalPlace(n.discomfort);
+            });
+            return resultList;
+        });
     };
+
+    /**
+     * 아래로 세 함수(날짜, 월, 년도별) 는 코드 중복이지만, 줄이면 조건문이 더 늘어나게 된다.
+     */
     this.readDayRx = function(startTime) {
         var leftDate = removeHours(new Date(startTime));
         var rightDate = removeHours(new Date(startTime));
@@ -283,19 +305,20 @@ var DBController = function() {
      */
     function averageData(list, startTime, endTime, offsetWrapObj) {
          var sumData = new DataModel();
-         sumData.warter = 1;
+         sumData.water = 1;
          var count = 0;
          var offset = (offset == undefined)?0:offsetWrapObj.offset;
          for(var i = offset, n = list.length; i < n; ++i) {
              if(list[i].time >= startTime && list[i].time < endTime) {
-                 sumData.humidity += list[i].humidity;
-                 sumData.temperature += list[i].temperature;
-                 sumData.ctrlPower += list[i].ctrlPower;
-                 sumData.ctrlFan += list[i].ctrlFan;
-                 sumData.discomfort += list[i].discomfort;
+                 sumData.humidity += parseFloat(list[i].humidity);
+                 sumData.temperature += parseFloat(list[i].temperature);
+                 sumData.ctrlPower += parseInt(list[i].ctrlPower) || 0;
+                 sumData.ctrlFan += parseInt(list[i].ctrlFan) || 0;
+                 sumData.discomfort += parseFloat(list[i].discomfort) || calcDiscomfortIndex(list[i].temperature,list[i].humidity);
                  // 물 없음 상태(0) > 전원이 꺼져있는 상태(-1) > 전원 켜짐 상태(1)
-                 sumData.warter = (list[i].warter == -1)?-1:sumData.warter;
-                 sumData.warter = (list[i].warter == 0 || sumData.warter == 0)?0:1;
+                 list[i].water  = list[i].water || 0;
+                 sumData.water = (list[i].water == -1)?-1:sumData.water;
+                 sumData.water = (list[i].water == 0 || sumData.water == 0)?0:1;
                  sumData.arvCount += list[i].arvCount;
                  count++;
              }
@@ -307,7 +330,7 @@ var DBController = function() {
          sumData.temperature = toSecondDecimalPlace(sumData.temperature / count);
          sumData.ctrlPower = toSecondDecimalPlace(sumData.ctrlPower / count);
          sumData.ctrlFan = toSecondDecimalPlace(sumData.ctrlFan / count);
-         sumData.warter = toSecondDecimalPlace(sumData.warter / count);
+         sumData.water = toSecondDecimalPlace(sumData.water / count);
          sumData.discomfort = toSecondDecimalPlace(sumData.discomfort / count);
          if(sumData.arvCount == 0) {
              sumData.arvCount = count;
@@ -346,6 +369,8 @@ var DBController = function() {
      * @returns {number} 불쾌지수
      */
     function calcDiscomfortIndex(temp,humi) {
+        temp = parseFloat(temp);
+        humi = parseFloat(humi);
         return toSecondDecimalPlace((1.8*temp)-(0.55*(1-humi/100.0)*(1.8*temp-26))+32);
     }
 
