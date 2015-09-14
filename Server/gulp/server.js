@@ -11,6 +11,6 @@ gulp.task('demon:server', function() {
         script : 'bin/www',
         ext: 'js',
         // View 와, 빌드된 파일, 그리고 gulp 스크립트는 무시한다.
-        ignore : ['src/test/**/*',  'libhost/**/*','node_modules/**/*','.git/**/*','gulp*', 'gulp/**/*', 'build/**/*']
+        ignore : ['src/test/**/*', 'views/**/*', 'libhost/**/*','node_modules/**/*','.git/**/*','gulp*', 'gulp/**/*', 'build/**/*']
     });
 })

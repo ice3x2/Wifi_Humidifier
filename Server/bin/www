@@ -19,21 +19,18 @@ var options = {
 };
 
 properties.parse (".properties", options, function (error, obj){
+
   if (error) {
     console.error (error);
     throw error;
   } else
   console.log (obj);
   global.__properties = obj;
+  global.__rootPath = require('path').resolve('./') + "";
 
   startWebServer();
 });
 
-
-function startTCPServer() {
-  var server =require('net').createServer(_include("ControlServer")).listen(__properties.control.port);
-
-}
 
 function startWebServer() {
   /**

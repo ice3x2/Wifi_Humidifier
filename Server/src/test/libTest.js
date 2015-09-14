@@ -12,7 +12,8 @@ var log = include('ColorLog');
 //store.setFanPWM(1).setPowerPWM(1).setMinHumidity(10).setMaxHumidity(50).commit();
 
 
-console.log(parseInt(100));
+
+
 
 //var log = require('../common/ColorLog');
 /*

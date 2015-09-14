@@ -1,0 +1,44 @@
+
+html, body {
+    height: 100%;
+    width: 100%;
+    margin: 0;
+    overflow: hidden;
+    background-color: white;
+}
+
+body {
+    background-color: #dddddd;
+}
+
+
+.optWidthFull {
+    width: 100%;
+}
+.optFullSize {
+    height: 100%;
+    width: 100%;
+}
+
+@media (min-device-width : 500px) {
+    .mainContainer {
+        width: 100%;
+    }
+}
+@media (max-width: 819px) {
+    .mainContainer {
+        width: 100%;
+    }
+}
+@media (min-width: 820px) {
+    .mainContainer {
+        width: 820px;
+
+    }
+}
+
+.mainContainer {
+    padding: 0 5px 0 5px;
+    height: 100%;
+    background-color: white;
+}

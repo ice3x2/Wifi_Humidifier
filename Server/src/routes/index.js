@@ -1,8 +1,10 @@
 var express = require('express');
+var path = require('path');
 var router = express.Router();
 var controlValues = include('ControlValueStore');
 var dataStore = include('DataStore');// include('DataStore');
 var log = include('ColorLog');
+
 
 
 router.post('/list', function(req, res, next) {
@@ -33,16 +35,30 @@ router.post('/list', function(req, res, next) {
 
 });
 
-router.get('/', function(req, res, next) {
-  res.render('index', { title: 'Express' });
+router.get(/^\/ng.*$/g, function(req, res, next) {
+    var filename = req.path.substring(1, req.path.length);
+    log.d(req.path);
+    var sIdx =filename.lastIndexOf('/');
+    if(sIdx > 0) {
+      filename = req.path.substring(0, sIdx);
+    }
+    filename += ".html";
+    log.d(filename);
+    res.sendFile(path.join(__rootPath, 'build','template', filename));
 });
 
-router.all('/status', function(req, res, next) {
+router.get('/', function(req, res, next) {
+  log.e(req.path);
+  res.sendFile(path.join(__rootPath, 'build', 'index.html'));
+
+});
+
+router.post('/status', function(req, res, next) {
   log.i("post : " + req.path);
   res.json(dataStore.getLatestData());
 });
 
-router.all('/ctrl', function(req, res, next) {
+router.post('/ctrl', function(req, res, next) {
   log.i("post : " + req.path);
   res.json(controlValues.getControlValue());
 });
@@ -70,18 +86,9 @@ router.get("/data", function(req, res, next) {
 
   if(temperature != undefined && humidity != undefined && water != undefined) {
     dataStore.putHumidity(humidity / 10).putTemperature(temperature / 10).putWater(water);
-    dataStore.commitData()
-
-    /*var date = new Date();
-    //date.setHours(new Date(Date.now()).getHours() - 6 );
-    dataStore.readYearRx(date.getTime()).subscribe(function(list) {
-      _.forEach(list, function(n) {
-        log.i(new Date(n.time).getMonth());
-      });
-      log.v(list.length);
-    }, function(err) {
-      log.e(err.stack);
-    });*/
+    var controlResult =  controlValues.getControlValue();
+    dataStore.putFanPWM(controlResult.fanPWM).putFanPWM(controlResult.powerPWM);
+    dataStore.commitData();
   }
 
   setTimeout(function() {
