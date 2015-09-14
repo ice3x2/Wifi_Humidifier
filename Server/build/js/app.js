@@ -8,13 +8,174 @@ var app = angular.module('app', ['ngAnimate', 'ngMaterial']);
 /**Angular Material Config*/
 angular.module('app').config(["$mdThemingProvider", function($mdThemingProvider) {
     $mdThemingProvider.theme('default')
-        .primaryPalette('red')
-        .accentPalette('deep-orange');
+        .primaryPalette('blue-grey')
+        .accentPalette('teal');
 }]);
 
 
-angular.module('app').controller('MainCtrl', ["$scope", "RestService", function($scope, RestService) {
-    $scope.tempColorIndex = [ {
+angular.module('app').controller('MainCtrl', ["$scope", "$mdDialog", "RestService", "COLOR_INDEX_TEMP", "COLOR_INDEX_HUMIDITY", "COLOR_INDEX_CT", "COLOR_INDEX_DI", "COLOR_INDEX_OP", function($scope, $mdDialog,RestService,
+                                                      COLOR_INDEX_TEMP,COLOR_INDEX_HUMIDITY,COLOR_INDEX_CT,COLOR_INDEX_DI,COLOR_INDEX_OP) {
+
+    var _status = {};
+    var _ctrl = {};
+    var _isRunNoWaterAlert = false;
+
+
+    $scope.tempColorIndex = COLOR_INDEX_TEMP;
+    $scope.humidityColorIndex = COLOR_INDEX_HUMIDITY;
+    $scope.ctColorIndex = COLOR_INDEX_CT;
+    $scope.diColorIndex = COLOR_INDEX_DI;
+    $scope.opColorIndex = COLOR_INDEX_OP;
+
+    $scope.tempValue = 'NC ';
+    $scope.humidityValue = 'NC ';
+    $scope.diValue = 'NC ';
+    $scope.ctValue = 'NC ';
+
+    $scope.isShowLoading = false;
+
+    updateStatus();
+    updateCtrlValue();
+    showOkSession(false);
+
+    $scope.onClickAuthLockButton = function(event) {
+        showAuthUnlockDialog(event);
+    };
+
+
+    function showAuthUnlockDialog(event) {
+        $mdDialog.show({
+            controller: DialogController,
+            templateUrl: 'ngDlgAuth',
+            //parent: angular.element(document.body),
+            targetEvent: event,
+            clickOutsideToClose:false,
+            escapeToClose : true
+        })
+        .then(function(answer) {
+            $scope.status = 'You said the information was "' + answer + '".';
+        }, function() {
+            $scope.status = 'You cancelled the dialog.';
+        });
+    }
+    function DialogController($scope, $mdDialog) {
+        $scope.ok = function(AuthenticationKey) {
+            $scope.isShowLoading = true;
+            showLoading(true);
+            RestService.loginRx(AuthenticationKey).subscribe(function(data) {
+                $mdDialog.cancel();
+                showLoading(false);
+                showOkSession(true);
+                $scope.isShowLoading = false;
+            }, function(err) {
+                $scope.failMessage = true;
+                showLoading(false);
+                showOkSession(false);
+                $scope.isShowLoading = false;
+            });
+        };
+        $scope.cancel = function() {
+            $mdDialog.cancel();
+        }
+    }
+    DialogController.$inject = ["$scope", "$mdDialog"];
+
+    function showLoading(show) {
+        $scope.isShowLoading = show;
+    }
+
+    function showOkSession(show) {
+        if(show) {
+            $scope.authLockIcon = 'img/ic_lock_open.svg';
+            console.log($scope.authLockIcon);
+        } else {
+            $scope.authLockIcon = 'img/ic_lock.svg';
+        }
+
+    }
+
+
+    function updateStatus() {
+        RestService.statusRx().subscribe(function (status) {
+            $scope.ctValue = status.connection == 3 ? 'Good' : (status.connection == 2) ? 'Normal' : (status.connection == 1) ? 'Bad' : 'NC';
+            $scope.tempValue = (status.connection == 0) ? 'NC ' : status.temperature;
+            $scope.humidityValue = (status.connection == 0) ? 'NC ' : status.humidity;
+            $scope.diValue = (status.connection == 0) ? 'NC ' : status.discomfort;
+            $scope.opValue = status.water == -1 ? 'Off' : (status.water == 0) ? 'No water' : (status.water == 1) ? 'On' : 'NC';
+            _status = status;
+            startShowNoWaterAlert();
+        }, function (err) {
+            console.log(err);
+            $scope.ctValue = 'NC';
+            $scope.diValue = 'NC ';
+            $scope.tempValue = 'NC ';
+            $scope.humidityValue = 'NC ';
+            $scope.opValue = 'NC ';
+            setTimeout(updateStatus, 5000)
+
+        });
+    }
+
+    function updateCtrlValue() {
+        RestService.ctrlRx(true).subscribe(function(ctrl) {
+            $scope.humiditySettingValue =  (!_.isUndefined(ctrl.minHumidity) && !_.isUndefined(ctrl.maxHumidity))?
+            ctrl.minHumidity + '~' +ctrl.maxHumidity : 'NC';
+            $scope.powerValue =  ctrl.power || 'NC';
+            $scope.fanValue =  ctrl.fan || 'NC';
+            _ctrl = ctrl;
+            console.log(_ctrl);
+        },function(err) {
+            console.log(err);
+            $scope.powerValue = 'NC';
+            $scope.humiditySettingValue = 'NC';
+            $scope.fanValue = 'NC';
+            setTimeout(updateCtrlValue, 5000)
+        });
+    }
+
+
+    function startShowNoWaterAlert() {
+        if(!_isRunNoWaterAlert) {
+            runNoWaterAlert();
+            _isRunNoWaterAlert = true;
+        }
+    }
+
+
+    function runNoWaterAlert() {
+        var changeCount = 0;
+        if(_status.water == 0) {
+            _.find($scope.opColorIndex, function(d,i) {
+                if(d['value'] == 'No water') {
+                    d.changed = d.changed || 0;
+                    changeCount = d.changed;
+                    d.color = (d.changed % 2 == 0)?'#FF3300':'#aaaaaa';
+                    $scope.opColorIndex = _.clone($scope.opColorIndex);
+                    if(changeCount > 0) {
+                        $scope.$apply();
+                    }
+                    ++$scope.opColorIndex[i].changed;
+                    return true;
+                }
+                return false;
+            });
+            setTimeout(runNoWaterAlert,(changeCount % 2 == 0)?700:200);
+        } else {
+            _isRunNoWaterAlert = false;
+        }
+    }
+
+}]);
+
+
+
+/**
+ * Created by ice3x2 on 2015. 9. 15..
+ */
+
+angular.module('app').constant('COLOR_INDEX_TEMP',
+
+    [ {
         value : -10000,
         color : '#2170B5'
     },{
@@ -47,12 +208,12 @@ angular.module('app').controller('MainCtrl', ["$scope", "RestService", function(
     },{
         value : 'NC ',
         color : '#aaaaaa',
-    }];
-    $scope.tempValue = 'NC ';
-    // 0% : 자연상태에서 있을 수 없음.
-    //  ~ 30% : 사막, 겨울철 난방에 의한 건조상태.
-    // ~ 60% :
-    $scope.humidityColorIndex = [ {
+    }]
+
+);
+
+angular.module('app').constant('COLOR_INDEX_HUMIDITY',
+    [ {
         value : 0,
         color : '#6100F2'
     },{
@@ -76,11 +237,11 @@ angular.module('app').controller('MainCtrl', ["$scope", "RestService", function(
     },{
         value : 'NC ',
         color : '#aaaaaa',
-    }];
-    $scope.humidityValue = 'NC ';
+    }]
+);
 
-
-    $scope.diColorIndex = [ {
+angular.module('app').constant('COLOR_INDEX_DI',
+    [ {
         value : 0,
         color : '#0BA320'
     },{
@@ -101,10 +262,10 @@ angular.module('app').controller('MainCtrl', ["$scope", "RestService", function(
     },{
         value : 'NC ',
         color : '#aaaaaa',
-    }];
-    $scope.diValue = 'NC ';
-
-    $scope.ctColorIndex = [{
+    }]
+);
+angular.module('app').constant('COLOR_INDEX_CT',
+    [{
         value : 'Good',
         color : '#0BA320'
     },{
@@ -116,26 +277,51 @@ angular.module('app').controller('MainCtrl', ["$scope", "RestService", function(
     },{
         value : 'NC',
         color : '#aaaaaa',
-    }];
-    $scope.ctValue = 'NC ';
+    }]
+);
 
 
+angular.module('app').constant('COLOR_INDEX_DI',
+    [ {
+        value : 0,
+        color : '#0BA320'
+    },{
+        value : 70,
+        color : '#0BA320',
+    },{
+        value : 75,
+        color : '#0BA3A3',
+    },{
+        value : 80,
+        color : '#F29900',
+    },{
+        value : 83,
+        color : '#FF5900',
+    },{
+        value : 100,
+        color : '#F23D00',
+    },{
+        value : 'NC ',
+        color : '#aaaaaa',
+    }]
+);
 
-    RestService.statusRx().subscribe(function(status) {
-        //console.log(status);
-        $scope.ctValue = status.connection == 3?'Good':(status.connection == 2)?'Normal':(status.connection == 1)?'Bad':'NC';
-        $scope.tempValue = (status.connection == 0)?'NC ':status.temperature;
-        $scope.humidityValue = (status.connection == 0)?'NC ':status.humidity;
-        $scope.diValue = (status.connection == 0)?'NC ':status.discomfort;
-    },function(err) {
-        $scope.ctValue = 'NC';
-        $scope.diValue = 'NC ';
-        $scope.tempValue = 'NC ';
-        $scope.humidityValue = 'NC ';
-    });
 
-}]);
-
+angular.module('app').constant('COLOR_INDEX_OP',
+    [{
+        value : 'No water',
+        color : '#F23D00'
+    },{
+        value : 'On',
+        color : '#0BA320',
+    },{
+        value : 'Off',
+        color : '#111111',
+    },{
+        value : 'default',
+        color : '#aaaaaa',
+    }]
+);
 
 
 /**
@@ -144,15 +330,22 @@ angular.module('app').controller('MainCtrl', ["$scope", "RestService", function(
 
 angular.module('app').service('RestService', ["$http", function($http) {
 
-    this.ctrlRx = function () {
-        var subject = new Rx.AsyncSubject();
-        $http.post('/ctrl').success(function (res) {
-            subject.onNext(res);
-            subject.onCompleted();
-        }).error(function (err) {
-            subject.onError(err);
-        });
-        return subject.asObservable();
+    this.ctrlRx = function (isRepeat) {
+        function getCtrlValue() {
+            var subject = new Rx.AsyncSubject();
+            $http.post('/ctrl').success(function (res) {
+                subject.onNext(res);
+                subject.onCompleted();
+            }).error(function (err) {
+                subject.onError(err);
+            });
+            return subject.asObservable();
+        }
+        if(isRepeat) {
+            return Rx.Observable.timer(0, 10000).timeInterval().flatMap(getCtrlValue);
+        } else {
+            return getCtrlValue();
+        }
     };
 
     this.statusRx = function () {
@@ -165,6 +358,28 @@ angular.module('app').service('RestService', ["$http", function($http) {
                 subject.onError(err);
             });
             return subject.asObservable();
+        });
+    };
+
+    this.loginRx = function(loginKey) {
+        var keySubject = new Rx.AsyncSubject();
+        $http.post('/auth/key').success(function (res) {
+            keySubject.onNext(res);
+            keySubject.onCompleted();
+        }).error(function (err) {
+            keySubject.onError(err);
+        });
+        return keySubject.asObservable().flatMap(function(res) {
+            var hashString = CryptoJS.HmacSHA256(loginKey, res.key).toString();
+            var param = {key : hashString};
+            var loginSubject = new Rx.AsyncSubject();
+            $http.post('/auth/login',param).success(function (res) {
+                loginSubject.onNext(res);
+                loginSubject.onCompleted();
+            }).error(function (err) {
+                loginSubject.onError(err);
+            });
+            return loginSubject.asObservable();
         });
     };
 
@@ -228,16 +443,6 @@ angular.module('app').service('WindowEventSvc', ["$window", function($window) {
     }
 
 
-    /*_windowEle.bind('resize', function() {
-        _oldValue.width = _newValue.width;
-        _oldValue.height = _newValue.height;
-        _newValue.width = _windowEle.width();
-        _newValue.height = _windowEle.height();
-        _.forEach(_resizeCallbacksFunc, function(callbackFunc) {
-            callbackFunc(_.clone(_newValue), _.clone(_oldValue));
-        });
-
-    });*/
 
     this.addResizeCallback = function(callbackFunc) {
         _resizeCallbacksFunc.push(callbackFunc);
@@ -263,6 +468,49 @@ angular.module('app').service('WindowEventSvc', ["$window", function($window) {
 
 
 
+
+}]);
+/**
+ * Created by ice3x2 on 2015. 9. 15..
+ */
+angular.module('app').directive('ngEnter', function () {
+    return function (scope, element, attrs) {
+        element.bind("keydown keypress", function (event) {
+            if(event.which === 13) {
+                scope.$apply(function (){
+                    scope.$eval(attrs.ngEnter);
+                });
+                event.preventDefault();
+            }
+        });
+    };
+});
+/**
+ * Created by love on 2015. 7. 2..
+ */
+
+
+angular.module('app').directive('ngLoading', ["$animate", function ($animate) {
+    return {
+        replace : true,
+        scope : {
+            ngShowLoading : '=?'
+        },
+        transclude : true,
+        restrict: 'E',
+        templateUrl: 'ngLoading',
+        link: function(scope, element, attrs) {
+            scope.$watch('ngShowLoading', function(value) {
+                scope.isShow = value;
+            });
+
+            scope.onClickBlock = function($event) {
+                $event.stopPropagation();
+            }
+
+
+        }
+    }
 
 }]);
 /**
@@ -323,15 +571,28 @@ angular.module('app').directive('ngStatusBox', ["WindowEventSvc", function (Wind
                     if(_.isString(scope.value)) {
                         if (currentValue == value) {
                             scope.statusBox = {'background-color': scope.colorIndex[i].color};
+                            return;
                         }
                     }  else {
                         if (currentValue >= value && nextValue > value) {
                             scope.statusBox = {'background-color': scope.colorIndex[i].color};
-                            break;
+                            return;
                         }
                     }
                 }
+                var color = '#454545';
+                _.find(scope.colorIndex, function(obj) {
+                    if(obj['value'] == 'default') {
+                        color = obj['color']
+                        return true;
+                    }
+                    return false;
+                });
+                scope.statusBox = {'background-color': color};
             }
+
+
+
 
         }
     }

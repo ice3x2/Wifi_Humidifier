@@ -6,9 +6,10 @@ var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
 
 var routes = require('./src/routes/index');
+var authRoute = include('auth');
 
 var app = express();
-
+var log = include('ColorLog');
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'jade');
@@ -21,14 +22,17 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.use('/', routes);
+
+app.use('/auth', authRoute);
 app.use('/js', express.static(path.join(__dirname, 'build/js')));
 app.use('/css', express.static(path.join(__dirname, 'build/css')));
-app.use('/template', express.static(path.join(__dirname, 'build/template')));
+app.use('/img', express.static(path.join(__dirname, 'build/img')));
+app.use('/', routes);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
   var err = new Error('Not Found');
+  console.dir(req.path);
   err.status = 404;
   next(err);
 });

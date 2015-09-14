@@ -2,6 +2,7 @@
 <html ng-app='app'>
 <head>
     <meta name="viewport" content="width=device-width, user-scalable=no">
+    <meta name="theme-color" content="#333333">
     <META http-equiv="Expires" content="-1">
     <META http-equiv="Pragma" content="no-cache">
     <META http-equiv="Cache-Control" content="No-Cache">
@@ -19,6 +20,11 @@
     <link rel="stylesheet" href="//mgcrea.github.io/angular-strap/styles/libs.min.css">
 
 
+    <!-- Crypto-js -->
+    <script src="http://crypto-js.googlecode.com/svn/tags/3.1.2/build/rollups/hmac-sha256.js"></script>
+
+
+
     <link rel='stylesheet' href='css/app.css'>
 
 
@@ -27,16 +33,35 @@
 </head>
 
 
+<body ng-controller='MainCtrl'  layout="column" layout-align="start center">
 
-<body ng-controller='MainCtrl'  layout layout-align="center start">
-    <md-whiteframe  class="md-whiteframe-z2 mainContainer" >
-        <div class="optWidthFull" layout >
-        <ng-status-box title="Temperature" value="tempValue" color-index="tempColorIndex"  unit="°C" style="width: 100%;display: inline-block;padding: 2pt"></ng-status-box>
-        <ng-status-box title="Humidity" value="humidityValue" unit="%" color-index="humidityColorIndex" style="width: 100%;display: inline-block;padding: 2pt"></ng-status-box>
-        <ng-status-box title="DI" value="diValue" color-index="diColorIndex"  style="width: 100%;display: inline-block;padding: 2pt"></ng-status-box>
-        <ng-status-box title="Connection status" value="ctValue" color-index="ctColorIndex"  style="width: 100%;display: inline-block;padding: 2pt"></ng-status-box>
+
+    <div class="MainContainer" layout="column" layout-align="start center">
+        <md-whiteframe class="md-whiteframe-z1922 MainContainer" style="position: fixed;z-index: 0; height: 100%;overflow: hidden;background-color: white"> </md-whiteframe>
+
+        <div class="ToolBarSpace ToolBar" layout="row" layout-align="center center" >
+            <div flex="90">Wifi Humidifier</div>
+            <md-icon flex="10" md-svg-icon="{{authLockIcon}}" ng-click="onClickAuthLockButton($event)" style="margin-right: 8px;border: none;outline: none;"></md-icon>
         </div>
-    </md-whiteframe>
+        <div class="ToolBarSpace"></div>
+        <div style="width: 100%;height: 1px;min-height: 1px;background-color: #dddddd;z-index: 1"></div>
+            <div style="height: 1em;min-height: 1em;"></div>
+            <div class="optWidthFull" layout style="padding: 0 5px 0 5px;z-index: 1">
+                <ng-status-box title="Temperature" value="tempValue" color-index="tempColorIndex"  unit="°C" style="width: 100%;display: inline-block;padding: 2pt"></ng-status-box>
+                <ng-status-box title="Humidity" value="humidityValue" unit="%" color-index="humidityColorIndex" style="width: 100%;display: inline-block;padding: 2pt"></ng-status-box>
+                <ng-status-box title="DI" value="diValue" color-index="diColorIndex"  style="width: 100%;display: inline-block;padding: 2pt"></ng-status-box>
+                <ng-status-box title="Connection status" value="ctValue" color-index="ctColorIndex"  style="width: 100%;display: inline-block;padding: 2pt"></ng-status-box>
+            </div>
+            <div class="optWidthFull" layout style="padding: 0 5px 0 5px;z-index: 1">
+                <ng-status-box title="Operation Status" value="opValue" color-index="opColorIndex"   style="width: 100%;display: inline-block;padding: 2pt"></ng-status-box>
+                <ng-status-box title="Humidity setting" value="humiditySettingValue" unit="%" style="width: 100%;display: inline-block;padding: 2pt"></ng-status-box>
+                <ng-status-box title="Power" value="powerValue" unit="%" style="width: 100%;display: inline-block;padding: 2pt"></ng-status-box>
+                <ng-status-box title="Fan" value="fanValue" unit="%" style="width: 100%;display: inline-block;padding: 2pt"></ng-status-box>
+            </div>
+    </div>
+
+    <ng-loading ng-show-loading="isShowLoading"></ng-loading>
+
 </body>
 
 <!--Commons-->

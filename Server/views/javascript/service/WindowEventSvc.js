@@ -46,16 +46,6 @@ angular.module('app').service('WindowEventSvc', function($window) {
     }
 
 
-    /*_windowEle.bind('resize', function() {
-        _oldValue.width = _newValue.width;
-        _oldValue.height = _newValue.height;
-        _newValue.width = _windowEle.width();
-        _newValue.height = _windowEle.height();
-        _.forEach(_resizeCallbacksFunc, function(callbackFunc) {
-            callbackFunc(_.clone(_newValue), _.clone(_oldValue));
-        });
-
-    });*/
 
     this.addResizeCallback = function(callbackFunc) {
         _resizeCallbacksFunc.push(callbackFunc);

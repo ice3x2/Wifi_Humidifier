@@ -1,0 +1,27 @@
+<md-dialog  aria-label="" style="width: 80%; max-width: 600px">
+    <form>
+        <md-toolbar>
+            <div class="md-toolbar-tools">
+                <h3>Authentication</h3>
+                <md-progress-circular ng-show="isShowLoading"  class="md-hue-2 md-accent"  md-diameter="20" md-mode="indeterminate"></md-progress-circular>
+                <span flex></span>
+                <md-button class="md-icon-button" ng-click="cancel()">
+                    <md-icon md-svg-src="img/ic_clear_white_24px.svg" aria-label="Close dialog"></md-icon>
+                </md-button>
+            </div>
+        </md-toolbar>
+        <md-dialog-content style="width:100%;max-height:810px;" ng-enter="ok(AuthenticationKey)">
+                <md-input-container flex  style="margin-top: -10px">
+                    <label>Authentication Key</label>
+                    <input ng-model="AuthenticationKey">
+                </md-input-container>
+                <div ng-show="failMessage" style="font-size: 9pt;color: maroon;margin: -23px 0 0 2px">Authentication key does not match.</div>
+
+        </md-dialog-content>
+        <div class="md-actions" layout="row" style="margin-top: -20px">
+            <md-button ng-click="ok(AuthenticationKey)" style="margin-right:10px;">
+                Ok
+            </md-button>
+        </div>
+    </form>
+</md-dialog>

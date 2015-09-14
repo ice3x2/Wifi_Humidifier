@@ -6,7 +6,7 @@ var fs = require('fs');
 var gulp = require('gulp');
 
 
-gulp.task('auto:dev', ['demon:server', 'watch:html', 'watch:css','watch:js']);
+gulp.task('auto:dev', ['demon:server', 'watch:html', 'watch:css','watch:js','watch:img']);
 
 
 fs.readdirSync(__dirname + '/gulp').forEach(function(task) {

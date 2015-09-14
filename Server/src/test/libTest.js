@@ -11,10 +11,19 @@ var log = include('ColorLog');
 
 //store.setFanPWM(1).setPowerPWM(1).setMinHumidity(10).setMaxHumidity(50).commit();
 
+var a =  [{id:1},{id:2}];
+console.log(_.find(a, function(obj, idx) {
+    return obj.id == 1;
+}));
 
+var json = [
+    { key: 'firstName', value: 2 },
+    { key: 'lastName',  value: 21 },
+    { key: 'phone', value: 10 }
+];
+json = _.sortBy(json, 'value').reverse();;
 
-
-
+console.log(json);
 //var log = require('../common/ColorLog');
 /*
 var storage = require('node-persist');
@@ -87,98 +96,3 @@ function rt(i) {
 }
 
 rt(0);*/
-
-function appendZero(number) {
-    var result = number + "";
-    var divider = 1000000000000000;
-    while(Math.floor(number / divider) == 0) {
-        result = "0" + result;
-        divider = Math.floor(divider / 10);
-    }
-    return result;
-}
-
-
-var callback = function(err, model) {
-    if (err) {
-        throw err;
-    } else {
-    }
-};
-/*
-var key = db.createDomainKey('LogData', appendZero(1443075747002));
-db.insert(key, {a : appendZero(1443075747002)}, callback);
-
-key = db.createDomainKey('LogData', appendZero(1442075567002));
-db.insert(key, {a : appendZero(1442075567002)}, callback);
-
-key = db.createDomainKey('LogData', appendZero(1342075547002));
-db.insert(key, {a : appendZero(1342075547002)}, callback);
-
-key = db.createDomainKey('LogData', appendZero(1542075547002));
-db.insert(key, {a : appendZero(1542075547002)}, callback);
-
-key = db.createDomainKey('LogData', appendZero(75547002));
-db.insert(key, {a : appendZero(75547002)}, callback);
-*/
-/*
-var key = db.createDomainKey( 'LogData', 1000000 );
-
-var callback = function(err, model) {
-    if (err) console.log(err);
-    console.log(model);
-};
-
-db.find( key, callback );
-
-function aa(aa,bb) {
-    console.log(bb === undefined);
-}
- */
-/*
-var completeCallback = function(err, list) {
-    if (err) console.log(err);
-    else console.log(list);
-};
-
-
-var params = {
-    start:'LogData:' + appendZero(0),
-    end:'LogData:' + appendZero(1542075547002 - 1),
-};*/
-
-//db.query(params, rowCallback, completeCallback);
-
-var rowCallback = function(key, value) {
-    /*db.delete(key,function(err) {
-
-    });*/
-    return value;
-
-};
-
-
-
-//db.query(params, rowCallback, completeCallback);
-//db.queryKeys( {}, console.log );
-
-
-/*
-
-var properties = require ("properties");
-
-var options = {
-    path: true,
-    namespaces: true,
-    sections: false,
-    variables: false,
-    include: true
-};
-
-
-properties.parse ("../../.properties", options, function (error, obj){
-    if (error) return console.error (error);
-
-    console.log (obj);
-    //{ a: 1, b: 2 }
-});*/

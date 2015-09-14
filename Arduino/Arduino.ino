@@ -449,6 +449,7 @@ void intoSetupMode(bool force) {
 }
 
 bool intoRunMode() {
+  Serial.println("intoRunMode");
   _config.mode = MODE_RUN;
   //saveConfig();
   //sendATCmd("AT+RST\r\n", 2000);

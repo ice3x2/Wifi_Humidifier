@@ -4,15 +4,22 @@
 
 angular.module('app').service('RestService', function($http) {
 
-    this.ctrlRx = function () {
-        var subject = new Rx.AsyncSubject();
-        $http.post('/ctrl').success(function (res) {
-            subject.onNext(res);
-            subject.onCompleted();
-        }).error(function (err) {
-            subject.onError(err);
-        });
-        return subject.asObservable();
+    this.ctrlRx = function (isRepeat) {
+        function getCtrlValue() {
+            var subject = new Rx.AsyncSubject();
+            $http.post('/ctrl').success(function (res) {
+                subject.onNext(res);
+                subject.onCompleted();
+            }).error(function (err) {
+                subject.onError(err);
+            });
+            return subject.asObservable();
+        }
+        if(isRepeat) {
+            return Rx.Observable.timer(0, 10000).timeInterval().flatMap(getCtrlValue);
+        } else {
+            return getCtrlValue();
+        }
     };
 
     this.statusRx = function () {
@@ -25,6 +32,28 @@ angular.module('app').service('RestService', function($http) {
                 subject.onError(err);
             });
             return subject.asObservable();
+        });
+    };
+
+    this.loginRx = function(loginKey) {
+        var keySubject = new Rx.AsyncSubject();
+        $http.post('/auth/key').success(function (res) {
+            keySubject.onNext(res);
+            keySubject.onCompleted();
+        }).error(function (err) {
+            keySubject.onError(err);
+        });
+        return keySubject.asObservable().flatMap(function(res) {
+            var hashString = CryptoJS.HmacSHA256(loginKey, res.key).toString();
+            var param = {key : hashString};
+            var loginSubject = new Rx.AsyncSubject();
+            $http.post('/auth/login',param).success(function (res) {
+                loginSubject.onNext(res);
+                loginSubject.onCompleted();
+            }).error(function (err) {
+                loginSubject.onError(err);
+            });
+            return loginSubject.asObservable();
         });
     };
 

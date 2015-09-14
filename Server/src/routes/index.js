@@ -6,7 +6,7 @@ var dataStore = include('DataStore');// include('DataStore');
 var log = include('ColorLog');
 
 
-
+// /ngStatusBox
 router.post('/list', function(req, res, next) {
   if(_.isEmpty(req.body)) {
     res.json([]);
@@ -35,23 +35,28 @@ router.post('/list', function(req, res, next) {
 
 });
 
-router.get(/^\/ng.*$/g, function(req, res, next) {
-    var filename = req.path.substring(1, req.path.length);
-    log.d(req.path);
-    var sIdx =filename.lastIndexOf('/');
-    if(sIdx > 0) {
-      filename = req.path.substring(0, sIdx);
-    }
-    filename += ".html";
-    log.d(filename);
-    res.sendFile(path.join(__rootPath, 'build','template', filename));
+
+router.all(/^\/ng.*$/, function(req, res, next) {
+
+  var filename = req.path.substring(1, req.path.length);
+  log.e(req.path);
+  var sIdx =filename.lastIndexOf('/');
+  if(sIdx > 0) {
+    filename = req.path.substring(0, sIdx);
+  }
+  filename += ".html";
+  log.e(filename);
+  res.sendFile(path.join(__rootPath, 'build','template', filename));
 });
+
 
 router.get('/', function(req, res, next) {
   log.e(req.path);
   res.sendFile(path.join(__rootPath, 'build', 'index.html'));
-
 });
+
+
+
 
 router.post('/status', function(req, res, next) {
   log.i("post : " + req.path);
@@ -87,7 +92,7 @@ router.get("/data", function(req, res, next) {
   if(temperature != undefined && humidity != undefined && water != undefined) {
     dataStore.putHumidity(humidity / 10).putTemperature(temperature / 10).putWater(water);
     var controlResult =  controlValues.getControlValue();
-    dataStore.putFanPWM(controlResult.fanPWM).putFanPWM(controlResult.powerPWM);
+    dataStore.putFanPWM(controlResult.fan).putFanPWM(controlResult.power);
     dataStore.commitData();
   }
 

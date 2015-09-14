@@ -56,15 +56,28 @@ angular.module('app').directive('ngStatusBox', function (WindowEventSvc) {
                     if(_.isString(scope.value)) {
                         if (currentValue == value) {
                             scope.statusBox = {'background-color': scope.colorIndex[i].color};
+                            return;
                         }
                     }  else {
                         if (currentValue >= value && nextValue > value) {
                             scope.statusBox = {'background-color': scope.colorIndex[i].color};
-                            break;
+                            return;
                         }
                     }
                 }
+                var color = '#454545';
+                _.find(scope.colorIndex, function(obj) {
+                    if(obj['value'] == 'default') {
+                        color = obj['color']
+                        return true;
+                    }
+                    return false;
+                });
+                scope.statusBox = {'background-color': color};
             }
+
+
+
 
         }
     }

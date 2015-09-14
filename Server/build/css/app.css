@@ -1,9 +1,8 @@
 
 html, body {
-    height: 100%;
     width: 100%;
     margin: 0;
-    overflow: hidden;
+    overflow: auto;
     background-color: white;
 }
 
@@ -11,6 +10,11 @@ body {
     background-color: #dddddd;
 }
 
+pre {
+    background-color: transparent;
+    border: 0;
+    border-width: 0;
+}
 
 .optWidthFull {
     width: 100%;
@@ -20,25 +24,46 @@ body {
     width: 100%;
 }
 
-@media (min-device-width : 500px) {
-    .mainContainer {
-        width: 100%;
-    }
-}
 @media (max-width: 819px) {
-    .mainContainer {
+    .MainContainer {
         width: 100%;
     }
+    .ToolBarSpace {
+        height: 48px;
+        min-height: 48px;
+        font-size : 16pt;
+        padding: 0 0 0 8px;
+    }
+
 }
 @media (min-width: 820px) {
-    .mainContainer {
+    .MainContainer {
         width: 820px;
 
     }
+    .ToolBarSpace {
+        height: 58px;
+        min-height: 58px;
+        font-size : 24pt;
+        padding: 0 0 2px 8px;
+    }
 }
 
-.mainContainer {
-    padding: 0 5px 0 5px;
-    height: 100%;
+
+
+.MainContainer {
+    position: relative;
     background-color: white;
+}
+
+.ToolBarSpace {
+    width:100%;
+    background-color: white;
+    color: #545454;
+    font-weight: bold;
+
+}
+
+.ToolBar {
+    position: absolute;
 }

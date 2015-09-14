@@ -8,14 +8,18 @@ var log = include('ColorLog');
 
 
 const KEY_CONTROL_VALUE = "KEY_CONTROL_VALUE";
+const PWM_MIN_POWER = 220;
+const PWM_MAX_POWER = 255;
+const PWM_MIN_FAN = 220;
+const PWM_MAX_FAN = 255;
 
 var ControlValueStore = function () {
     var _controlValue =  {
         minHumidity : 20,
         maxHumidity : 45,
         thresholdDiscomfort : 80,
-        powerPWM : 255, // 0 또는 200-255 사이의 값.
-        fanPWM : 255, // 0 또는 200-255 사이의 값.
+        power : 100,
+        fan : 100
     }
     var _this = this;
 
@@ -45,12 +49,24 @@ var ControlValueStore = function () {
         return _this;
     };
 
-    this.setPowerPWM = function(value) {
-        _controlValue.powerPWM = value;
+
+    this.getPowerPWM = function() {
+        if(_controlValue.power == 0) return 0;
+        return parseInt(map(_controlValue.power,0,100,PWM_MIN_POWER,PWM_MAX_POWER));
+    };
+
+    this.getFanPWM = function() {
+        if(_controlValue.fan == 0) return 0;
+        return parseInt(map(_controlValue.fan,0,100,PWM_MIN_FAN,PWM_MAX_FAN));
+    };
+
+    this.setPower = function(value) {
+
+        _controlValue.power = (value > 100)?100:value;
         return _this;
     };
-    this.setFanPWM = function(value) {
-        _controlValue.fanPWM = value;
+    this.setFan = function(value) {
+        _controlValue.fan = (value > 100)?100:value;
         return _this;
     };
 
@@ -65,6 +81,9 @@ var ControlValueStore = function () {
         return _.cloneDeep(_controlValue);
     }
 
+    function map(x,in_min, in_max, out_min, out_max) {
+        return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+    }
     return this;
 }();
 

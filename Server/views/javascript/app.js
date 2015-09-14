@@ -8,131 +8,161 @@ var app = angular.module('app', ['ngAnimate', 'ngMaterial']);
 /**Angular Material Config*/
 angular.module('app').config(function($mdThemingProvider) {
     $mdThemingProvider.theme('default')
-        .primaryPalette('red')
-        .accentPalette('deep-orange');
+        .primaryPalette('blue-grey')
+        .accentPalette('teal');
 });
 
 
-angular.module('app').controller('MainCtrl', function($scope, RestService) {
-    $scope.tempColorIndex = [ {
-        value : -10000,
-        color : '#2170B5'
-    },{
-        value : 0,
-        color : '#1165ED',
-    },{
-        value : 5,
-        color : '#11A4ED',
-    },{
-        value : 10,
-        color : '#0EC4BB',
-    },{
-        value : 15,
-        color : '#10B068',
-    },{
-        value : 20,
-        color : '#73C91C',
-    },{
-        value : 28,
-        color : '#0BA320',
-    },{
-        value : 30,
-        color : '#E05C04',
-    },{
-        value : 35,
-        color : '#FF4D00',
-    },{
-        value : 1000,
-        color : '#E00404',
-    },{
-        value : 'NC ',
-        color : '#aaaaaa',
-    }];
+angular.module('app').controller('MainCtrl', function($scope, $mdDialog,RestService,
+                                                      COLOR_INDEX_TEMP,COLOR_INDEX_HUMIDITY,COLOR_INDEX_CT,COLOR_INDEX_DI,COLOR_INDEX_OP) {
+
+    var _status = {};
+    var _ctrl = {};
+    var _isRunNoWaterAlert = false;
+
+
+    $scope.tempColorIndex = COLOR_INDEX_TEMP;
+    $scope.humidityColorIndex = COLOR_INDEX_HUMIDITY;
+    $scope.ctColorIndex = COLOR_INDEX_CT;
+    $scope.diColorIndex = COLOR_INDEX_DI;
+    $scope.opColorIndex = COLOR_INDEX_OP;
+
     $scope.tempValue = 'NC ';
-    // 0% : 자연상태에서 있을 수 없음.
-    //  ~ 30% : 사막, 겨울철 난방에 의한 건조상태.
-    // ~ 60% :
-    $scope.humidityColorIndex = [ {
-        value : 0,
-        color : '#6100F2'
-    },{
-        value : 10,
-        color : '#8900F2',
-    },{
-        value : 20,
-        color : '#0041F2',
-    },{
-        value : 40,
-        color : '#F29900',
-    },{
-        value : 60,
-        color : '#0BA320',
-    },{
-        value : 80,
-        color : '#F23D00',
-    },{
-        value : 100,
-        color : '#F23D00',
-    },{
-        value : 'NC ',
-        color : '#aaaaaa',
-    }];
     $scope.humidityValue = 'NC ';
-
-
-    $scope.diColorIndex = [ {
-        value : 0,
-        color : '#0BA320'
-    },{
-        value : 70,
-        color : '#0BA320',
-    },{
-        value : 75,
-        color : '#0BA3A3',
-    },{
-        value : 80,
-        color : '#F29900',
-    },{
-        value : 83,
-        color : '#FF5900',
-    },{
-        value : 100,
-        color : '#F23D00',
-    },{
-        value : 'NC ',
-        color : '#aaaaaa',
-    }];
     $scope.diValue = 'NC ';
-
-    $scope.ctColorIndex = [{
-        value : 'Good',
-        color : '#0BA320'
-    },{
-        value : 'Normal',
-        color : '#F29900',
-    },{
-        value : 'Bad',
-        color : '#FF5900',
-    },{
-        value : 'NC',
-        color : '#aaaaaa',
-    }];
     $scope.ctValue = 'NC ';
 
+    $scope.isShowLoading = false;
+
+    updateStatus();
+    updateCtrlValue();
+    showOkSession(false);
+
+    $scope.onClickAuthLockButton = function(event) {
+        showAuthUnlockDialog(event);
+    };
 
 
-    RestService.statusRx().subscribe(function(status) {
-        //console.log(status);
-        $scope.ctValue = status.connection == 3?'Good':(status.connection == 2)?'Normal':(status.connection == 1)?'Bad':'NC';
-        $scope.tempValue = (status.connection == 0)?'NC ':status.temperature;
-        $scope.humidityValue = (status.connection == 0)?'NC ':status.humidity;
-        $scope.diValue = (status.connection == 0)?'NC ':status.discomfort;
-    },function(err) {
-        $scope.ctValue = 'NC';
-        $scope.diValue = 'NC ';
-        $scope.tempValue = 'NC ';
-        $scope.humidityValue = 'NC ';
-    });
+    function showAuthUnlockDialog(event) {
+        $mdDialog.show({
+            controller: DialogController,
+            templateUrl: 'ngDlgAuth',
+            //parent: angular.element(document.body),
+            targetEvent: event,
+            clickOutsideToClose:false,
+            escapeToClose : true
+        })
+        .then(function(answer) {
+            $scope.status = 'You said the information was "' + answer + '".';
+        }, function() {
+            $scope.status = 'You cancelled the dialog.';
+        });
+    }
+    function DialogController($scope, $mdDialog) {
+        $scope.ok = function(AuthenticationKey) {
+            $scope.isShowLoading = true;
+            showLoading(true);
+            RestService.loginRx(AuthenticationKey).subscribe(function(data) {
+                $mdDialog.cancel();
+                showLoading(false);
+                showOkSession(true);
+                $scope.isShowLoading = false;
+            }, function(err) {
+                $scope.failMessage = true;
+                showLoading(false);
+                showOkSession(false);
+                $scope.isShowLoading = false;
+            });
+        };
+        $scope.cancel = function() {
+            $mdDialog.cancel();
+        }
+    }
+
+    function showLoading(show) {
+        $scope.isShowLoading = show;
+    }
+
+    function showOkSession(show) {
+        if(show) {
+            $scope.authLockIcon = 'img/ic_lock_open.svg';
+            console.log($scope.authLockIcon);
+        } else {
+            $scope.authLockIcon = 'img/ic_lock.svg';
+        }
+
+    }
+
+
+    function updateStatus() {
+        RestService.statusRx().subscribe(function (status) {
+            $scope.ctValue = status.connection == 3 ? 'Good' : (status.connection == 2) ? 'Normal' : (status.connection == 1) ? 'Bad' : 'NC';
+            $scope.tempValue = (status.connection == 0) ? 'NC ' : status.temperature;
+            $scope.humidityValue = (status.connection == 0) ? 'NC ' : status.humidity;
+            $scope.diValue = (status.connection == 0) ? 'NC ' : status.discomfort;
+            $scope.opValue = status.water == -1 ? 'Off' : (status.water == 0) ? 'No water' : (status.water == 1) ? 'On' : 'NC';
+            _status = status;
+            startShowNoWaterAlert();
+        }, function (err) {
+            console.log(err);
+            $scope.ctValue = 'NC';
+            $scope.diValue = 'NC ';
+            $scope.tempValue = 'NC ';
+            $scope.humidityValue = 'NC ';
+            $scope.opValue = 'NC ';
+            setTimeout(updateStatus, 5000)
+
+        });
+    }
+
+    function updateCtrlValue() {
+        RestService.ctrlRx(true).subscribe(function(ctrl) {
+            $scope.humiditySettingValue =  (!_.isUndefined(ctrl.minHumidity) && !_.isUndefined(ctrl.maxHumidity))?
+            ctrl.minHumidity + '~' +ctrl.maxHumidity : 'NC';
+            $scope.powerValue =  ctrl.power || 'NC';
+            $scope.fanValue =  ctrl.fan || 'NC';
+            _ctrl = ctrl;
+            console.log(_ctrl);
+        },function(err) {
+            console.log(err);
+            $scope.powerValue = 'NC';
+            $scope.humiditySettingValue = 'NC';
+            $scope.fanValue = 'NC';
+            setTimeout(updateCtrlValue, 5000)
+        });
+    }
+
+
+    function startShowNoWaterAlert() {
+        if(!_isRunNoWaterAlert) {
+            runNoWaterAlert();
+            _isRunNoWaterAlert = true;
+        }
+    }
+
+
+    function runNoWaterAlert() {
+        var changeCount = 0;
+        if(_status.water == 0) {
+            _.find($scope.opColorIndex, function(d,i) {
+                if(d['value'] == 'No water') {
+                    d.changed = d.changed || 0;
+                    changeCount = d.changed;
+                    d.color = (d.changed % 2 == 0)?'#FF3300':'#aaaaaa';
+                    $scope.opColorIndex = _.clone($scope.opColorIndex);
+                    if(changeCount > 0) {
+                        $scope.$apply();
+                    }
+                    ++$scope.opColorIndex[i].changed;
+                    return true;
+                }
+                return false;
+            });
+            setTimeout(runNoWaterAlert,(changeCount % 2 == 0)?700:200);
+        } else {
+            _isRunNoWaterAlert = false;
+        }
+    }
 
 });
 
