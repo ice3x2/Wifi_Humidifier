@@ -19,28 +19,28 @@ router.post('/value', function(req, res, next) {
 
 router.post('/setting', function(req, res, next) {
     log.i("post : " + req.path);
-    if(checkAuth(req.cookies.sid) == SESSION_CONFIRMED) {
+    var sessionStatus = checkAuth(req.cookies);
+    if(sessionStatus == SESSION_CONFIRMED) {
         controlValues.setMinHumidity(req.body.minHumidity);
-        controlValues.setMaxHumidity(req.body.minHumidity);
-        controlValues.setMaxHumidity(req.body.minHumidity);
+        controlValues.setMaxHumidity(req.body.maxHumidity);
         controlValues.setThresholdDiscomfort(req.body.thresholdDiscomfort);
         controlValues.setPower(req.body.power);
         controlValues.setFan(req.body.fan);
         controlValues.commitControlValue();
-        res.json({success : 1});
-    } else if(checkAuth(req.cookie.sid) == SESSION_EXPIRED) {
-        res.status(401).json({success : 0});
-    } else if(checkAuth(req.cookie.sid) == SESSION_FAIL) {
-        res.status(401).json({success : -1});
+        res.json({auth : 1});
+    } else if(sessionStatus == SESSION_EXPIRED) {
+        res.status(401).json({auth : 0});
+    } else if(sessionStatus == SESSION_FAIL) {
+        res.status(401).json({auth : -1});
     }
 
 });
 
-function checkAuth(sid) {
-    if(_.isUndefined(sid)) {
+function checkAuth(cookies) {
+    if(_.isUndefined(cookies) || _.isUndefined(cookies.sid)) {
         return SESSION_FAIL;
     }
-    return dataStore.renewSession(sid)?SESSION_CONFIRMED:SESSION_EXPIRED;
+    return dataStore.renewSession(cookies.sid)?SESSION_CONFIRMED:SESSION_EXPIRED;
 }
 
 

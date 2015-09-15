@@ -5,7 +5,7 @@
 angular.module('app').service('RestService', function($http) {
 
     this.ctrlValueRx = function (isRepeat) {
-        function getCtrlValue() {
+        var getCtrlValue = function() {
             var subject = new Rx.AsyncSubject();
             $http.post('/ctrl/value').success(function (res) {
                 subject.onNext(res);
@@ -15,14 +15,27 @@ angular.module('app').service('RestService', function($http) {
             });
             return subject.asObservable();
         }
-        if(isRepeat) {
-            return Rx.Observable.timer(0, 10000).timeInterval().flatMap(getCtrlValue);
+        if(isRepeat === true) {
+            return Rx.Observable.timer(0, 10000).timeInterval().flatMap(function() {
+                return new getCtrlValue();
+            });
         } else {
-            return getCtrlValue();
+            return new getCtrlValue();
         }
     };
 
-    this.statusNowRx = function () {
+    this.ctrlSetRx = function (params) {
+        var subject = new Rx.AsyncSubject();
+        $http.post('/ctrl/setting',params).success(function (res) {
+            subject.onNext(res);
+            subject.onCompleted();
+        }).error(function (err) {
+            subject.onError(err);
+        });
+        return subject.asObservable();
+    };
+
+    this.statusNowByIntervalRx = function () {
         return Rx.Observable.timer(0, 5000).timeInterval().flatMap(function() {
             var subject = new Rx.AsyncSubject();
             $http.post('/status/now').success(function (res) {

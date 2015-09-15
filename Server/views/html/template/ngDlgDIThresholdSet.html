@@ -1,0 +1,31 @@
+<md-dialog  aria-label="" style="width: 80%; max-width: 600px">
+    <form>
+        <md-toolbar>
+            <div class="md-toolbar-tools">
+                <h3>Set DI</h3>
+                <md-progress-circular ng-show="isShowLoading"  class="md-hue-2 md-accent"  md-diameter="20" md-mode="indeterminate"></md-progress-circular>
+                <span flex></span>
+                <md-button class="md-icon-button" ng-click="cancel()">
+                    <md-icon md-svg-src="img/ic_clear_white_24px.svg" aria-label="Close dialog"></md-icon>
+                </md-button>
+            </div>
+        </md-toolbar>
+        <md-dialog-content style="width:100%;max-height:810px;" ng-enter="ok(AuthenticationKey)">
+
+            <span>Discomfort index threshold : </span>
+            <div layout layout-align="center center">
+                <md-slider flex="70" min="500" max="900" ng-model="thresholdDiscomfort"  aria-label="threshold discomfort index" style="border: none;margin-top: -10px"></md-slider>
+                <div  layout layout-align="start center" style="border: none;font-size: 12pt;margin: -10px 16px 0 16px;min-width: 32px ">
+                    {{thresholdDiscomfort / 10}}
+                </div>
+            </div>
+            <div style="height: 20px"></div>
+
+        </md-dialog-content>
+        <div class="md-actions" layout="row" style="margin-top: -20px">
+            <md-button ng-click="ok(thresholdDiscomfort)" style="margin-right:10px;">
+                Ok
+            </md-button>
+        </div>
+    </form>
+</md-dialog>

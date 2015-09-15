@@ -1,7 +1,8 @@
 <div class="optWidthFull">
     <div class="optWidthFull">
-        <div class="optWidthFull titleBox" style="font-size: 10pt;">{{title}}</div>
-        <div class="statusBox" layout layout-align="center center" ng-style="statusBox" style="width:100%; background-color: #aaaaaa;color: white;font-size: 30pt" >
+        <div class="statusBox" layout layout-align="center center" ng-style="statusBox" style="width:100%; background-color: #aaaaaa;color: white;font-size: 30pt;position: relative" >
+            <div class="optWidthFull titleBox" style="position: absolute;left: 5%;bottom: 2%;font-weight: 500;font-size: 14pt;color: #ffffff">{{title}}</div>
+            <div class="optFullSize" ng-transclude style="position: absolute;left: 0;top: 0"></div>
             {{value}}{{unit}}
         </div>
     </div>

@@ -36,8 +36,8 @@
 <body ng-controller='MainCtrl'  layout="column" layout-align="start center">
 
 
-    <div class="MainContainer" layout="column" layout-align="start center">
-        <md-whiteframe class="md-whiteframe-z1922 MainContainer" style="position: fixed;z-index: 0; height: 100%;overflow: hidden;background-color: white"> </md-whiteframe>
+    <div class="MainContainer" layout="column" layout-align="start start">
+        <md-whiteframe class="md-whiteframe-z4 MainContainer" style="position: fixed;z-index: 0; height: 100%;overflow: hidden;background-color: white"> </md-whiteframe>
 
         <div class="ToolBarSpace ToolBar" layout="row" layout-align="center center" >
             <div flex="90">Wifi Humidifier</div>
@@ -45,19 +45,38 @@
         </div>
         <div class="ToolBarSpace"></div>
         <div style="width: 100%;height: 1px;min-height: 1px;background-color: #dddddd;z-index: 1"></div>
-            <div style="height: 1em;min-height: 1em;"></div>
-            <div class="optWidthFull" layout style="padding: 0 5px 0 5px;z-index: 1">
-                <ng-status-box title="Temperature" value="tempValue" color-index="tempColorIndex"  unit="°C" style="width: 100%;display: inline-block;padding: 2pt"></ng-status-box>
-                <ng-status-box title="Humidity" value="humidityValue" unit="%" color-index="humidityColorIndex" style="width: 100%;display: inline-block;padding: 2pt"></ng-status-box>
-                <ng-status-box title="DI" value="diValue" color-index="diColorIndex"  style="width: 100%;display: inline-block;padding: 2pt"></ng-status-box>
-                <ng-status-box title="Connection status" value="ctValue" color-index="ctColorIndex"  style="width: 100%;display: inline-block;padding: 2pt"></ng-status-box>
+        <div class="VerticalSpace"></div>
+        <div class="optWidthFull SubTitle" layout style="position: relative">
+            Current Status
+            <div  style="position: absolute;right: 0;bottom :0;font-size: 0.5em; z-index: 1;font-weight: 500; padding: 0 12pt 0.3em 0;">
+                Connect status : <span ng-style="styleConnectionStatusFontColor"> {{ctValue}} </span>
             </div>
-            <div class="optWidthFull" layout style="padding: 0 5px 0 5px;z-index: 1">
-                <ng-status-box title="Operation Status" value="opValue" color-index="opColorIndex"   style="width: 100%;display: inline-block;padding: 2pt"></ng-status-box>
-                <ng-status-box title="Humidity setting" value="humiditySettingValue" unit="%" style="width: 100%;display: inline-block;padding: 2pt"></ng-status-box>
-                <ng-status-box title="Power" value="powerValue" unit="%" style="width: 100%;display: inline-block;padding: 2pt"></ng-status-box>
-                <ng-status-box title="Fan" value="fanValue" unit="%" style="width: 100%;display: inline-block;padding: 2pt"></ng-status-box>
-            </div>
+        </div>
+        <div class="optWidthFull" layout style="padding: 0 5px 0 5px;z-index: 1">
+            <ng-status-box class="StatusBox" title="Temperature" value="tempValue" color-index="tempColorIndex"  unit="°C" ></ng-status-box>
+            <ng-status-box class="StatusBox" title="Humidity" value="humidityValue" unit="%" color-index="humidityColorIndex" ></ng-status-box>
+            <ng-status-box class="StatusBox" title="DI" value="diValue" color-index="diColorIndex"  ></ng-status-box>
+            <ng-status-box class="StatusBox" title="Operation" value="opValue" color-index="opColorIndex"   ></ng-status-box>
+        </div>
+        <div class="VerticalSpace"></div>
+        <div class="optWidthFull SubTitle">
+            Control value
+        </div>
+        <div class="optWidthFull" layout style="padding: 0 5px 0 5px;z-index: 1">
+            <ng-status-box class="StatusBox" title="Humidity set" value="humiditySettingValue"  unit="%" color-index="ctrlHumidityColorIndex" >
+                <md-icon class="CtrlSetIcon" md-svg-icon="img/ic_settings_white_24px.svg" ng-click="onClickHumiditySetting($event)" ng-show="isShowCtrlButton"></md-icon>
+            </ng-status-box>
+            <ng-status-box class="StatusBox" title="DI set" value="DISettingValue"  color-index="ctrlDIColorIndex" unit="" >
+                <md-icon class="CtrlSetIcon" md-svg-icon="img/ic_settings_white_24px.svg" ng-click="onClickDiscomfortIndexThresholdSetting($event)"ng-show="isShowCtrlButton"  ></md-icon>
+            </ng-status-box>
+            <ng-status-box class="StatusBox" title="Power" value="powerValue" unit="%" color-index="ctrlPowerColorIndex" >
+                <md-icon class="CtrlSetIcon" md-svg-icon="img/ic_settings_white_24px.svg" ng-click="onClickPowerPwmSetting($event)" ng-show="isShowCtrlButton"></md-icon>
+            </ng-status-box>
+            <ng-status-box class="StatusBox" title="Fan" value="fanValue" unit="%" color-index="ctrlFanColorIndex" >
+                <md-icon class="CtrlSetIcon" md-svg-icon="img/ic_settings_white_24px.svg" ng-click="onClickPowerPwmSetting($event)" ng-show="isShowCtrlButton"></md-icon>
+            </ng-status-box>
+        </div>
+
     </div>
 
     <ng-loading ng-show-loading=" "></ng-loading>
@@ -70,10 +89,11 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/rxjs/2.5.3/rx.all.min.js" type="text/javascript"></script>
 
 <!--For AngularJS-->
-<script src="//ajax.googleapis.com/ajax/libs/angularjs/1.3.15/angular.min.js" type="text/javascript"></script>
-<script src="//ajax.googleapis.com/ajax/libs/angularjs/1.3.15/angular-route.js" type="text/javascript"></script>
-<script src="//ajax.googleapis.com/ajax/libs/angularjs/1.3.15/angular-animate.js" type="text/javascript"></script>
-<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.3.15/angular-aria.min.js" type="text/javascript"></script>
+<script src="//ajax.googleapis.com/ajax/libs/angularjs/1.4.5/angular.min.js" type="text/javascript"></script>
+
+<script src="//ajax.googleapis.com/ajax/libs/angularjs/1.4.5/angular-animate.js" type="text/javascript"></script>
+<script src="//ajax.googleapis.com/ajax/libs/angularjs/1.4.5/angular-cookies.js" type="text/javascript"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.4.5/angular-aria.min.js" type="text/javascript"></script>
 
 <!--For Angular-material-->
 <script src="https://ajax.googleapis.com/ajax/libs/angular_material/0.10.0/angular-material.js"></script>

@@ -138,7 +138,7 @@ angular.module('app').constant('COLOR_INDEX_DI',
 
 angular.module('app').constant('COLOR_INDEX_OP',
     [{
-        value : 'No water',
+        value : 'Water',
         color : '#F23D00'
     },{
         value : 'On',
@@ -152,3 +152,57 @@ angular.module('app').constant('COLOR_INDEX_OP',
     }]
 );
 
+
+
+angular.module('app').constant('COLOR_INDEX_CTRL_ON',
+    [{
+        value : 'default',
+        color : '#13A88F',
+    }]
+);
+
+angular.module('app').constant('COLOR_INDEX_CTRL_OFF',
+    [{
+        value : 'default',
+        color : '#454545',
+    }]
+);
+
+
+angular.module('app').constant('COLOR_INDEX_CTRL_PWM',
+
+    [{
+        value : 0,
+        color : '#1A2422',
+    },{
+        value : 10,
+        color : '#2B3836',
+    },{
+        value : 20,
+        color : '#424A49',
+    },{
+        value : 30,
+        color : '#5B6966',
+    },{
+        value : 40,
+        color : '#6B7D7A',
+    },{
+        value : 50,
+        color : '#81A19B',
+    },{
+        value : 60,
+        color : '#7DA8A1',
+    },{
+        value : 70,
+        color : '#67A69B',
+    },{
+        value : 80,
+        color : '#52A89A',
+    },{
+        value : 90,
+        color : '#3DA896',
+    },{
+        value : 100,
+        color : '#13A88F',
+    }]
+);

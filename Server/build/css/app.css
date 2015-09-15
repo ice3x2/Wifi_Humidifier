@@ -2,7 +2,8 @@
 html, body {
     width: 100%;
     margin: 0;
-    overflow: auto;
+    overflow-y: auto;
+    overflow-x: hidden;
     background-color: white;
 }
 
@@ -12,8 +13,7 @@ body {
 
 pre {
     background-color: transparent;
-    border: 0;
-    border-width: 0;
+    border: none;
 }
 
 .optWidthFull {
@@ -34,12 +34,16 @@ pre {
         font-size : 16pt;
         padding: 0 0 0 8px;
     }
-
+    .SubTitle {
+        font-size: 1.2em;
+    }
+    .VerticalSpace {
+        height : 7px
+    }
 }
 @media (min-width: 820px) {
     .MainContainer {
         width: 820px;
-
     }
     .ToolBarSpace {
         height: 58px;
@@ -47,9 +51,20 @@ pre {
         font-size : 24pt;
         padding: 0 0 2px 8px;
     }
+    .SubTitle {
+        font-size: 20pt;
+    }
+    .VerticalSpace {
+        height : 20px
+    }
 }
 
-
+.SubTitle {
+    margin: 0 0 0 5px;
+    z-index: 1;
+    font-weight: 300;
+    color : #9a9a9a
+}
 
 .MainContainer {
     position: relative;
@@ -60,10 +75,26 @@ pre {
     width:100%;
     background-color: white;
     color: #545454;
-    font-weight: bold;
-
 }
 
 .ToolBar {
     position: absolute;
+    font-weight: 400;
+}
+
+.CtrlSetIcon {
+    position: absolute;
+    padding: 10% 3% 3% 10%;
+    width: 35%;
+    height: 35%;
+    bottom: 0;
+    right: 0;
+    border: none;
+    outline: none;
+}
+
+.StatusBox {
+    width: 100%;
+    display: inline-block;
+    padding: 2pt
 }
