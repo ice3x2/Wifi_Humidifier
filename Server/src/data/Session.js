@@ -46,6 +46,7 @@ var Session = function() {
             if(item.hashString == hashString) {
                 item.time = Date.now();
                 item.success = true;
+                return true;
             }
             return false;
         });

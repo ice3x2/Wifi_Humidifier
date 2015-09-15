@@ -20,7 +20,7 @@ var ControlValueStore = function () {
         thresholdDiscomfort : 80,
         power : 100,
         fan : 100
-    }
+    };
     var _this = this;
 
     persist.initSync();
@@ -35,17 +35,17 @@ var ControlValueStore = function () {
     }
 
     this.setMinHumidity = function(value) {
-        _controlValue.minHumidity = value;
+        _controlValue.minHumidity = value || _controlValue.minHumidity;
         return _this;
     };
 
     this.setMaxHumidity = function(value) {
-        _controlValue.maxHumidity = value;
+        _controlValue.maxHumidity = value || _controlValue.maxHumidity;
         return _this;
     };
 
     this.setThresholdDiscomfort = function(value) {
-        _controlValue.thresholdDiscomfort = value;
+        _controlValue.thresholdDiscomfort = value || _controlValue.thresholdDiscomfort;
         return _this;
     };
 
@@ -61,16 +61,18 @@ var ControlValueStore = function () {
     };
 
     this.setPower = function(value) {
-
+        if(_.isUndefined(value)) return;
         _controlValue.power = (value > 100)?100:value;
         return _this;
     };
+
     this.setFan = function(value) {
+        if(_.isUndefined(value)) return;
         _controlValue.fan = (value > 100)?100:value;
         return _this;
     };
 
-    this.commit = function() {
+    this.commitControlValue = function() {
         persist.initSync();
         persist.setItem(KEY_CONTROL_VALUE,_controlValue);
         log.i("ControlValueStore::commit()")

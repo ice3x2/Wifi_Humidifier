@@ -4,10 +4,10 @@
 
 angular.module('app').service('RestService', function($http) {
 
-    this.ctrlRx = function (isRepeat) {
+    this.ctrlValueRx = function (isRepeat) {
         function getCtrlValue() {
             var subject = new Rx.AsyncSubject();
-            $http.post('/ctrl').success(function (res) {
+            $http.post('/ctrl/value').success(function (res) {
                 subject.onNext(res);
                 subject.onCompleted();
             }).error(function (err) {
@@ -22,10 +22,10 @@ angular.module('app').service('RestService', function($http) {
         }
     };
 
-    this.statusRx = function () {
+    this.statusNowRx = function () {
         return Rx.Observable.timer(0, 5000).timeInterval().flatMap(function() {
             var subject = new Rx.AsyncSubject();
-            $http.post('/status').success(function (res) {
+            $http.post('/status/now').success(function (res) {
                 subject.onNext(res);
                 subject.onCompleted();
             }).error(function (err) {
@@ -55,6 +55,17 @@ angular.module('app').service('RestService', function($http) {
             });
             return loginSubject.asObservable();
         });
+    };
+
+    this.logoutRx = function() {
+        var keySubject = new Rx.AsyncSubject();
+        $http.post('/auth/logout').success(function (res) {
+            keySubject.onNext(res);
+            keySubject.onCompleted();
+        }).error(function (err) {
+            keySubject.onError(err);
+        });
+        return keySubject.asObservable();
     };
 
 

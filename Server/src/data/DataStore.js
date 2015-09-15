@@ -80,7 +80,7 @@ var DBController = function() {
      * @param value 200-255 사이의 값.
      */
     this.putPowerPWM = function(value) {
-        _data.ctrlPower = value;
+        _data.ctrlPower = value || 0;
         return _this;
 
     };
@@ -89,7 +89,7 @@ var DBController = function() {
      * @param valued 200-255 사이의 값.
      */
     this.putFanPWM = function(value) {
-        _data.ctrlFan = value;
+        _data.ctrlFan = value || 0;
         return _this;
     };
 

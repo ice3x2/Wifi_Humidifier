@@ -17,9 +17,9 @@ router.post('/login', function(req, res, next) {
 });
 
 router.post('/logout', function(req, res, next) {
-    var isSuccess = session.removeSession(req.body.key || 'error');
+    var isSuccess = session.removeSession(req.cookies.sid || 'error');
     res.clearCookie('sid');
-    res.json(isSuccess?{auth : true}:{auth : false})
+    res.status(isSuccess?200:401).json(isSuccess?{auth : true}:{auth : false})
 });
 
 router.post('/key', function(req, res, next) {

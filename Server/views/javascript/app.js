@@ -15,11 +15,10 @@ angular.module('app').config(function($mdThemingProvider) {
 
 angular.module('app').controller('MainCtrl', function($scope, $mdDialog,RestService,
                                                       COLOR_INDEX_TEMP,COLOR_INDEX_HUMIDITY,COLOR_INDEX_CT,COLOR_INDEX_DI,COLOR_INDEX_OP) {
-
     var _status = {};
     var _ctrl = {};
     var _isRunNoWaterAlert = false;
-
+    var _isAuthed = false;
 
     $scope.tempColorIndex = COLOR_INDEX_TEMP;
     $scope.humidityColorIndex = COLOR_INDEX_HUMIDITY;
@@ -36,10 +35,20 @@ angular.module('app').controller('MainCtrl', function($scope, $mdDialog,RestServ
 
     updateStatus();
     updateCtrlValue();
-    showOkSession(false);
+    changeAuthedState(false);
 
     $scope.onClickAuthLockButton = function(event) {
-        showAuthUnlockDialog(event);
+        if(!_isAuthed) {
+            showAuthUnlockDialog(event);
+        } else {
+            changeAuthedState(false);
+            RestService.logoutRx().subscribe(function(data) {
+               console.log(data);
+            }, function(err) {
+                console.log(err);
+            });
+
+         }
     };
 
 
@@ -58,6 +67,8 @@ angular.module('app').controller('MainCtrl', function($scope, $mdDialog,RestServ
             $scope.status = 'You cancelled the dialog.';
         });
     }
+
+
     function DialogController($scope, $mdDialog) {
         $scope.ok = function(AuthenticationKey) {
             $scope.isShowLoading = true;
@@ -65,12 +76,12 @@ angular.module('app').controller('MainCtrl', function($scope, $mdDialog,RestServ
             RestService.loginRx(AuthenticationKey).subscribe(function(data) {
                 $mdDialog.cancel();
                 showLoading(false);
-                showOkSession(true);
+                changeAuthedState(true);
                 $scope.isShowLoading = false;
             }, function(err) {
                 $scope.failMessage = true;
                 showLoading(false);
-                showOkSession(false);
+                changeAuthedState(false);
                 $scope.isShowLoading = false;
             });
         };
@@ -83,19 +94,19 @@ angular.module('app').controller('MainCtrl', function($scope, $mdDialog,RestServ
         $scope.isShowLoading = show;
     }
 
-    function showOkSession(show) {
+    function changeAuthedState(show) {
         if(show) {
             $scope.authLockIcon = 'img/ic_lock_open.svg';
-            console.log($scope.authLockIcon);
+            _isAuthed = true;
         } else {
             $scope.authLockIcon = 'img/ic_lock.svg';
+            _isAuthed = false;
         }
-
     }
 
 
     function updateStatus() {
-        RestService.statusRx().subscribe(function (status) {
+        RestService.statusNowRx().subscribe(function (status) {
             $scope.ctValue = status.connection == 3 ? 'Good' : (status.connection == 2) ? 'Normal' : (status.connection == 1) ? 'Bad' : 'NC';
             $scope.tempValue = (status.connection == 0) ? 'NC ' : status.temperature;
             $scope.humidityValue = (status.connection == 0) ? 'NC ' : status.humidity;
@@ -116,13 +127,12 @@ angular.module('app').controller('MainCtrl', function($scope, $mdDialog,RestServ
     }
 
     function updateCtrlValue() {
-        RestService.ctrlRx(true).subscribe(function(ctrl) {
+        RestService.ctrlValueRx(true).subscribe(function(ctrl) {
             $scope.humiditySettingValue =  (!_.isUndefined(ctrl.minHumidity) && !_.isUndefined(ctrl.maxHumidity))?
             ctrl.minHumidity + '~' +ctrl.maxHumidity : 'NC';
             $scope.powerValue =  ctrl.power || 'NC';
             $scope.fanValue =  ctrl.fan || 'NC';
             _ctrl = ctrl;
-            console.log(_ctrl);
         },function(err) {
             console.log(err);
             $scope.powerValue = 'NC';
