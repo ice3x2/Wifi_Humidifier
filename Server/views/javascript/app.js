@@ -15,21 +15,15 @@ angular.module('app').config(function($mdThemingProvider) {
 });
 
 
-angular.module('app').controller('MainCtrl', function($scope, $mdDialog,$mdToast,$cookies,RestService,WindowEventSvc,
+angular.module('app').controller('MainCtrl', function($scope, $mdDialog,$mdToast,$cookies,RestService,WindowEventSvc,StatusListNormalizer,
                                                       COLOR_INDEX_TEMP,COLOR_INDEX_HUMIDITY,COLOR_INDEX_CT,COLOR_INDEX_DI,COLOR_INDEX_OP,
                                                       COLOR_INDEX_CTRL_ON,COLOR_INDEX_CTRL_OFF,COLOR_INDEX_CTRL_PWM) {
 
     var MOBILE_WIDTH = 819;
 
 
-
-
-
-
-
-
-
-
+    var _temperatureChartIndex = 0;
+    var _chartLabelIntervalPoint = 1;
     var _status = {};
     var _ctrl = {};
     var _isRunNoWaterAlert = false;
@@ -56,61 +50,17 @@ angular.module('app').controller('MainCtrl', function($scope, $mdDialog,$mdToast
 
     $scope.isShowLoading = false;
 
-    $scope.chart = {
-        select: {
-            years: [],
-            months: [],
-            dates: [],
-            hourses: []
-        },
-        reference: 'd',
-        options: {
-            data: [],
-            dimensions: {
-                ctrlPower: {
-                    axis: 'y',
-                    color: '#F48FB1',
-                    type: 'area-step',
-                    name: 'power',
-                    postfix: '%',
-                }, temperature: {
-                    axis: 'y2',
-                    label: true,
-                    postfix: '°C',
-                    type: 'spline',
-                    color: '#2196F3',
-                    name: 'temperature'
-                }, humidity: {
-                    axis: 'y',
-                    label: true,
-                    color: '#4A148C',
-                    postfix: '%',
-                    name: 'humidity',
-                    type: 'spline',
-                }, time: {
-                    axis: 'x',
-                    label: true,
-                }
-            }, axis: {
-                y: {
-                    max: 99
-                },
-                y2: {
-                    show: false,
-
-                }
-            }
-        }
-    };
-
 
 
 
     $cookies.remove('sid');
 
-    requestStatusStartRepeat();
-    requestFirstStatusUpdateTime();
-    //requestStatusList(new Date(),$scope.chart.reference);
+    setTimeout(function() {
+        requestStatusList(new Date(),$scope.chart.reference);
+        requestStatusStartRepeat();
+        requestFirstStatusUpdateTime();
+    },1000);
+    initChartOptions();
     requestCtrlValue(true);
     changeAuthState(false);
     changeAuthState(false);
@@ -182,6 +132,54 @@ angular.module('app').controller('MainCtrl', function($scope, $mdDialog,$mdToast
 
 
         }
+    }
+
+    function initChartOptions() {
+
+        $scope.chart = {
+            select: {
+                years: [],
+                months: [],
+                dates: [],
+                hourses: []
+            },
+            reference: 'd',
+            options: {
+                data: [],
+                dimensions: {
+                    ctrlPower: { axis: 'y',  color: '#F48FB1',  type: 'area-step',  name: 'power',  postfix: '%', },
+                    temperature: { axis: 'y2',  label: true,  postfix: '°C',  type: 'spline',  color: '#2196F3',  name: 'temperature'
+                    }, humidity: { axis: 'y', label: true,  color: '#4A148C', postfix: '%', name: 'humidity', type: 'spline',
+                    }, date: { axis: 'x', label: true, }
+                }, override: { axis: { y: { max: 99, },  y2: { show: false, } }
+                }}};
+
+
+
+        _.set($scope.chart.options.override, 'data.labels.format.temperature', function(data,key,idx, j) {
+            if(!_.isNull(data)) {
+                if(_temperatureChartIndex % _chartLabelIntervalPoint == 0) {
+                    ++_temperatureChartIndex;
+                    return data + '°C';
+                }
+                ++_temperatureChartIndex;
+                return;
+            }
+            _temperatureChartIndex = 0;
+        });
+        var _humidityChartIndex = 0;
+        _.set($scope.chart.options.override, 'data.labels.format.humidity', function(data,key,idx, j) {
+            if(!_.isNull(data)) {
+                if(_humidityChartIndex % _chartLabelIntervalPoint == 0) {
+                    ++_humidityChartIndex;
+                    return data + '%';
+                }
+                ++_humidityChartIndex;
+                return;
+            }
+            _humidityChartIndex = 0;
+        });
+
     }
 
 
@@ -401,103 +399,13 @@ angular.module('app').controller('MainCtrl', function($scope, $mdDialog,$mdToast
     }
 
     function invalidChart(statusList) {
-       /* var selectedDate = new Date($scope.chart.select.year,$scope.chart.select.month - 1,$scope.chart.select.date,$scope.chart.select.hours);
-        var idx = 0;
-        var times = {
-            before : 0,
-            current : 0,
-            next : 0,
-            end : 0
-        };
-
-        function initTimes(startDate, reference, times) {
-            startDate.setMinutes(0); startDate.setMilliseconds(0);
-            var endDate, beforeDate, nextDate ;
-            if(reference == 'd') {
-                startDate.setHours(0);
-                endDate = new Date(startDate); beforeDate = new Date(startDate); nextDate = new Date(startDate);
-                endDate.setDate(startDate.getDate() + 1);
-                beforeDate.setHours(startDate.getHours() -1);
-                nextDate.setHours(startDate.getHours() + 1);
-            } else if(reference == 'h') {
-                endDate = new Date(startDate); beforeDate = new Date(startDate); nextDate = new Date(startDate);
-                endDate.setHours(startDate.getHours() + 1);
-                beforeDate.setMinutes(startDate.getMinutes() -1);
-                nextDate.setMinutes(startDate.getMinutes() + 1);
-            } else if(reference == 'm') {
-                startDate.setHours(0); startDate.setDate(1);
-                endDate = new Date(startDate); beforeDate = new Date(startDate); nextDate = new Date(startDate);
-                endDate.setMonth(startDate.getMonth() + 1);
-                beforeDate.setDate(startDate.getDate() -1);
-                nextDate.setDate(startDate.getDate() + 1);
-            } else if(reference == 'y') {
-                startDate.setHours(0); startDate.setDate(1); startDate.setMonth(0);
-                endDate = new Date(startDate); beforeDate = new Date(startDate); nextDate = new Date(startDate);
-                endDate.setFullYear(startDate.getFullYear() + 1);
-                beforeDate.setMonth(startDate.getMonth() -1);
-                nextDate.setMonth(startDate.getMonth() + 1);
-            }
-            times.before = beforeDate.getTime();
-            times.next = nextDate.getTime();
-            times.current = startDate.getTime();
-            times.end = endDate.getTime();
-        }
-
-        function nextTimes(reference,times) {
-            times.before = times.current;
-            times.current = times.next;
-            var currentDate = new Date(times.current);
-            var nextDate = new Date(times.current);
-            if(reference == 'd') {
-                nextDate.setHours(currentDate.getHours() + 1);
-            } else if(reference == 'h') {
-                nextDate.setMinutes(currentDate.getMinutes() + 1);
-                console.log(new Date(times.current).getMinutes());
-            } else if(reference == 'm') {
-                nextDate.setDate(currentDate.getDate() + 1);
-            } else if(reference == 'y') {
-                nextDate.setMonth(currentDate.getMonth() + 1);
-            }
-            times.next = nextDate.getTime();
-        }
-
-
-        console.log('added');
-        initTimes(selectedDate,$scope.chart.reference, times);
-        var list = [];
-        var listIdx = 0;
-        var dummy = {time : 0, humidity : 0, power : 0, temperature : 0};
-        do {
-            if(idx >= statusList.length || times.current < statusList[idx].time) {
-                dummy.time = times.current;
-                list.push(_.clone(dummy));
-            } else {
-                list.push(statusList[idx]);
-                ++idx;
-            }
-            if($scope.chart.reference == 'h') {
-                list[listIdx].date = new Date(list[listIdx].time).getMinutes();
-            }
-            else if($scope.chart.reference == 'd') {
-                list[listIdx].date = new Date(list[listIdx].time).getHours();
-            }
-            else if($scope.chart.reference == 'm') {
-                list[listIdx].date = new Date(list[listIdx].time).getDate();
-            }
-            else if($scope.chart.reference == 'y') {
-                list[listIdx].date = new Date(list[listIdx].time).getMonth();
-            }
-            nextTimes($scope.chart.reference, times);
-            ++listIdx;
-        } while(times.current < times.end)*/
-
-
-        $scope.chart.options.data = statusList;
-        $scope.chart.options.data = statusList;
+        $scope.chart.options.data = StatusListNormalizer.normalizeStatusList(statusList, $scope.chart.reference,
+            new Date($scope.chart.select.year,$scope.chart.select.month - 1,$scope.chart.select.date,$scope.chart.select.hours));
     }
 
 
     function invalidDateSelect(_startDate, selectDate) {
+        _chartLabelIntervalPoint = ($scope.chart.reference == 'h')?8:($scope.chart.reference == 'd' || $scope.chart.reference == 'm')?4:2;
         selectDate = selectDate || new Date();
         console.log(selectDate);
 

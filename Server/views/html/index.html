@@ -52,44 +52,8 @@
             </div>
         </div>
 
-        <div class="op-width-full" layout layout-wrap style="padding: 0 3px 0 3px;">
-            <div flex="100" style="padding: 5px">
+        <div class="op-width-full"  layout layout-wrap style="padding: 0 3px 0 3px;">
 
-            <md-whiteframe class="md-whiteframe-z2 op-corner-s1 op-width-full" layout-wrap layout layout-align="start center" style="overflow: hidden;background-color: white">
-                <span style="padding: 0 0 0 5px;font-weight: 200;font-size: 0.9em;color: #222222;">
-                   Reference date :
-                </span>
-                <div layout style="margin: -45px 0 0 8px;height : 80px;font-size: 0.8em">
-                    <md-select ng-model="chart.select.year" ng-change="onChangeDateSelect()">
-                        <label>Year</label>
-                        <md-option ng-repeat="year in chart.select.years" value="{{year}}">{{year}}</md-option>
-                    </md-select>
-                    <md-select ng-model="chart.select.month" ng-change="onChangeDateSelect()">
-                        <label>Month</label>
-                        <md-option ng-repeat="month in chart.select.months" value="{{month}}">{{month}}</md-option>
-                    </md-select>
-                    <md-select ng-model="chart.select.date" ng-change="onChangeDateSelect()">
-                        <label>Date</label>
-                        <md-option ng-repeat="date in chart.select.dates" value="{{date}}">{{date}}</md-option>
-                    </md-select>
-                    <md-select ng-model="chart.select.hours" ng-change="onChangeDateSelect()">
-                        <label>Hour</label>
-                        <md-option ng-repeat="hours in chart.select.hourses" value="{{hours}}">{{hours}}</md-option>
-                    </md-select>
-                </div>
-                <md-radio-group layout ng-model="chart.reference" ng-change="onChangeDateSelect()" style="margin: 0 0 0 0; font-weight: 300;font-size: 0.9em;color: #222222;">
-                    <md-radio-button value="y" class="md-primary" >Year</md-radio-button>
-                    <md-radio-button value="m" class="md-primary" style="margin-left: -8px">Month</md-radio-button>
-                    <md-radio-button value="d" class="md-primary" style="margin-left: -8px">Day</md-radio-button>
-                    <md-radio-button value="h" class="md-primary" style="margin-left: -8px">Hours</md-radio-button>
-                </md-radio-group>
-
-                <div class="op-width-full" style="overflow-y : hidden; overflow-x: auto;-webkit-overflow-scrolling: touch;overflow-scrolling: touch">
-                <angular-chart options="chart.options" style="min-width: 480px;width: 100%;height: 90%"></angular-chart>
-                </div>
-
-            </md-whiteframe>
-            </div>
             <ng-status-box class="ob-status" flex="{{flexStatusBox}}" title="Temperature" value="tempValue" color-index="tempColorIndex"  unit="°C" ></ng-status-box>
             <ng-status-box class="ob-status" flex="{{flexStatusBox}}" title="Humidity" value="humidityValue" unit="%" color-index="humidityColorIndex" ></ng-status-box>
             <ng-status-box class="ob-status" flex="{{flexStatusBox}}" title="Discomfort index" value="diValue" color-index="diColorIndex"  ></ng-status-box>
@@ -107,9 +71,52 @@
                 <md-icon class="CtrlSetIcon" md-svg-icon="img/ic_settings_white_24px.svg" ng-click="onClickPowerPwmSetting($event)" ng-show="isShowCtrlButton"></md-icon>
             </ng-status-box>
             <ng-status-box class="ob-status" flex="33" ng-show="isShowConnectionStatusBox" title="Connection status" value="ctValue" color-index="ctColorIndex"   ></ng-status-box>
+
+
+            <md-whiteframe class="md-whiteframe-z2 op-corner-s1 op-width-full" layout-wrap layout layout-align="start center" style="margin: 5px; overflow: hidden;background-color: white">
+                    <span layout layout-align="center center" style="padding: 0 0 0 8px;height: 50px; font-weight: 200;font-size: 0.9em;color: #222222;">
+                       Reference date :
+                    </span>
+                <div layout style="margin: -85px 0 0 8px;height : 40px;font-size: 0.8em">
+                    <md-select  aria-labe="year" ng-model="chart.select.year" ng-change="onChangeDateSelect()"">
+                    <label>Year</label>
+                    <md-option ng-repeat="year in chart.select.years" value="{{year}}">{{year}}</md-option>
+                    </md-select>
+                    <md-select aria-labe="month" ng-model="chart.select.month" ng-change="onChangeDateSelect()">
+                        <label>Month</label>
+                        <md-option ng-repeat="month in chart.select.months" value="{{month}}">{{month}}</md-option>
+                    </md-select>
+                    <md-select aria-labe="date" ng-model="chart.select.date" ng-change="onChangeDateSelect()">
+                        <label>Date</label>
+                        <md-option ng-repeat="date in chart.select.dates" value="{{date}}">{{date}}</md-option>
+                    </md-select>
+                    <md-select aria-labe="hour" ng-model="chart.select.hours" ng-change="onChangeDateSelect()">
+                        <label>Hour</label>
+                        <md-option ng-repeat="hours in chart.select.hourses" value="{{hours}}">{{hours}}</md-option>
+                    </md-select>
+                </div>
+                <md-radio-group layout ng-model="chart.reference" ng-change="onChangeDateSelect()" style="margin: 0 0 0 0; font-weight: 300;font-size: 0.9em;color: #222222;">
+                    <md-radio-button value="y" class="md-primary" >Year</md-radio-button>
+                    <md-radio-button value="m" class="md-primary" style="margin-left: -8px">Month</md-radio-button>
+                    <md-radio-button value="d" class="md-primary" style="margin-left: -8px">Day</md-radio-button>
+                    <md-radio-button value="h" class="md-primary" style="margin-left: -8px">Hours</md-radio-button>
+                </md-radio-group>
+
+                <div class="op-width-full" style="overflow-y : hidden; overflow-x: auto;-webkit-overflow-scrolling: touch;overflow-scrolling: touch">
+                    <angular-chart id="_statusChart" options="chart.options" style="min-width: 480px;width: 100%;height: 90%"></angular-chart>
+                </div>
+
+            </md-whiteframe>
+
+            <div class="VerticalSpace"></div>
+            Connect status : <span ng-style="styleConnectionStatusFontColor"> {{ctValue}} </span>
+
         </div>
 
-        Connect status : <span ng-style="styleConnectionStatusFontColor"> {{ctValue}} </span>
+
+
+
+
 
 
 

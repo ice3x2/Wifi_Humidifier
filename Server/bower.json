@@ -20,7 +20,7 @@
     "angular": "~1.4.5",
     "angular-animate": "~1.4.5",
     "angular-aria": "~1.4.5",
-    "angular-chart": "~0.3.2",
+    "angular-chart": "https://github.com/ice3x2/angular-chart.git#e4593eabd9b84732d179efd001c49169e096a216",
     "angular-cookies": "~1.4.5",
     "angular-material": "0.11.0",
     "crypto-js": "~3.1.5",

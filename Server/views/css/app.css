@@ -86,8 +86,9 @@ label {
     }
 }
 
-.VerticalSpace {
+.ob-vertical-space {
     height: 10px;
+    width: 100%;
 }
 
 
