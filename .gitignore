@@ -3,7 +3,7 @@ node_modules/
 data_base/
 persist/
 bower_components/
-
+build/
 
 # Compiled Object files
 *.slo
