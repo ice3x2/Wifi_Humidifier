@@ -28,6 +28,7 @@ properties.parse (".properties", options, function (error, obj){
   global.__properties = obj;
   global.__rootPath = require('path').resolve('./') + "";
 
+
   startWebServer();
 });
 

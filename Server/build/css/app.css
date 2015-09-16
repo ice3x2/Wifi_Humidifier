@@ -2,99 +2,104 @@
 html, body {
     width: 100%;
     margin: 0;
-    overflow-y: auto;
-    overflow-x: hidden;
-    background-color: white;
+    background-color: #37474F;
+    font-family: RobotoDraft, serif;
+
 }
 
 body {
-    background-color: #dddddd;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overflow-scrolling: touch;
 }
 
 pre {
     background-color: transparent;
-    border: none;
+    border: 0;
+    border-width: 0;
 }
 
-.optWidthFull {
+label {
+    color: #4DB6AC;
+    font-weight: 700;
+    padding: 8px 0 0 8px
+}
+
+.c3-line {
+    stroke-width: 2px;
+}
+.c3-text {
+    font-size: 1.3em;
+    font-family: RobotoDraft, serif;
+}
+
+
+.op-width-full {
     width: 100%;
 }
-.optFullSize {
+.op-both-full {
     height: 100%;
     width: 100%;
 }
 
+.op-corner-s1 {
+    border-radius: 3px;
+}
+.op-circle {
+    border-radius: 50%;
+    width: 200px;
+    height: 200px;
+    /* width and height can be anything, as long as they're equal */
+}
+
+
+
 @media (max-width: 819px) {
-    .MainContainer {
+    .ob-main-container {
         width: 100%;
     }
     .ToolBarSpace {
         height: 48px;
         min-height: 48px;
-        font-size : 16pt;
-        padding: 0 0 0 8px;
+
     }
-    .SubTitle {
-        font-size: 1.2em;
+
+    .ob-status {
+        padding : 3px
     }
-    .VerticalSpace {
-        height : 7px
-    }
+
 }
 @media (min-width: 820px) {
-    .MainContainer {
-        width: 820px;
+    .ob-main-container {
+        width: 90%;
+        max-width: 1024px;
     }
     .ToolBarSpace {
         height: 58px;
         min-height: 58px;
-        font-size : 24pt;
-        padding: 0 0 2px 8px;
+        padding: 0 0 2px 0;
     }
-    .SubTitle {
-        font-size: 20pt;
-    }
-    .VerticalSpace {
-        height : 20px
+
+    .ob-status {
+        padding : 5px
     }
 }
 
-.SubTitle {
-    margin: 0 0 0 5px;
-    z-index: 1;
-    font-weight: 300;
-    color : #9a9a9a
+.VerticalSpace {
+    height: 10px;
 }
 
-.MainContainer {
+
+
+.ob-main-container {
     position: relative;
-    background-color: white;
 }
 
 .ToolBarSpace {
     width:100%;
-    background-color: white;
-    color: #545454;
+    font-weight: 200;
+    color: #80CBC4;
+    font-size : 12pt;
 }
 
-.ToolBar {
-    position: absolute;
-    font-weight: 400;
-}
-
-.CtrlSetIcon {
-    position: absolute;
-    padding: 10% 3% 3% 10%;
-    width: 35%;
-    height: 35%;
-    bottom: 0;
-    right: 0;
-    border: none;
-    outline: none;
-}
-
-.StatusBox {
-    width: 100%;
-    display: inline-block;
-    padding: 2pt
-}

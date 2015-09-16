@@ -2,6 +2,7 @@
 node_modules/
 data_base/
 persist/
+bower_components/
 
 
 # Compiled Object files

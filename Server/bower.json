@@ -1,0 +1,31 @@
+{
+  "name": "Server",
+  "version": "0.1.0",
+  "homepage": "https://github.com/ice3x2/Wifi_Humidifier",
+  "authors": [
+    "yagnu <ice3x2@gmail.com>"
+  ],
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "data_base",
+    "build",
+    "persist",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "angular": "~1.4.5",
+    "angular-animate": "~1.4.5",
+    "angular-aria": "~1.4.5",
+    "angular-chart": "~0.3.2",
+    "angular-cookies": "~1.4.5",
+    "angular-material": "0.11.0",
+    "crypto-js": "~3.1.5",
+    "jquery": "~2.1.4",
+    "lodash": "~3.10.1",
+    "rxjs": "~3.1.2"
+  }
+}

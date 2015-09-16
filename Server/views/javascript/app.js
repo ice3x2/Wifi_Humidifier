@@ -2,7 +2,7 @@
  * Created by ice3x2 on 2015. 6. 10..
  */
 
-var app = angular.module('app', ['ngCookies','ngAnimate', 'ngMaterial']);
+var app = angular.module('app', ['ngCookies','ngAnimate', 'ngMaterial','angularChart']);
 
 
 /**Angular Material Config*/
@@ -13,14 +13,28 @@ angular.module('app').config(function($mdThemingProvider) {
 });
 
 
-angular.module('app').controller('MainCtrl', function($scope, $mdDialog,$mdToast,$cookies,RestService,
+angular.module('app').controller('MainCtrl', function($scope, $mdDialog,$mdToast,$cookies,RestService,WindowEventSvc,
                                                       COLOR_INDEX_TEMP,COLOR_INDEX_HUMIDITY,COLOR_INDEX_CT,COLOR_INDEX_DI,COLOR_INDEX_OP,
                                                       COLOR_INDEX_CTRL_ON,COLOR_INDEX_CTRL_OFF,COLOR_INDEX_CTRL_PWM) {
+
+
+
+
+
+
+
+
+
+
+    var MOBILE_WIDTH = 819;
+
+
     var _status = {};
     var _ctrl = {};
     var _isRunNoWaterAlert = false;
     var _isAuthed = false;
     var _currentMessageOnToast = '';
+    var _startDate = new Date();
     $scope.tempColorIndex = COLOR_INDEX_TEMP;
     $scope.humidityColorIndex = COLOR_INDEX_HUMIDITY;
     $scope.ctColorIndex = COLOR_INDEX_CT;
@@ -32,7 +46,7 @@ angular.module('app').controller('MainCtrl', function($scope, $mdDialog,$mdToast
     $scope.ctrlFanColorIndex = COLOR_INDEX_CTRL_OFF;
     $scope.ctrlHumidityColorIndexColorIndex = COLOR_INDEX_CTRL_OFF;
 
-
+    $scope.flexStatusBox = 25;
 
     $scope.tempValue = 'NC ';
     $scope.humidityValue = 'NC ';
@@ -41,12 +55,71 @@ angular.module('app').controller('MainCtrl', function($scope, $mdDialog,$mdToast
 
     $scope.isShowLoading = false;
 
+    $scope.chart = {
+        select: {
+            years: [],
+            months: [],
+            dates: [],
+            hourses: []
+        },
+        reference: 'd',
+        options: {
+            data: [],
+            dimensions: {
+                ctrlPower: {
+                    axis: 'y',
+                    color: '#F48FB1',
+                    type: 'area-step',
+                    name: 'power',
+                    postfix: '%',
+                }, temperature: {
+                    axis: 'y2',
+                    label: true,
+                    postfix: '°C',
+                    type: 'spline',
+                    color: '#2196F3',
+                    name: 'temperature'
+                }, humidity: {
+                    axis: 'y',
+                    label: true,
+                    color: '#4A148C',
+                    postfix: '%',
+                    name: 'humidity',
+                    type: 'spline',
+                }
+            }, axis: {
+                y: {
+                    max: 99
+                },
+                y2: {
+                    show: false,
+
+                }
+            }
+        }
+    };
+
+
+
+
     $cookies.remove('sid');
 
     requestStatusStartRepeat();
+    requestFirstStatusUpdateTime();
+    requestStatusList(new Date(),$scope.chart.reference);
     requestCtrlValue(true);
     changeAuthState(false);
     changeAuthState(false);
+
+    WindowEventSvc.addResizeCallback(function(newValue) {
+        if(newValue.width > MOBILE_WIDTH) {
+            $scope.flexStatusBox = 25;
+            $scope.isShowConnectionStatusBox = false;
+        } else {
+            $scope.flexStatusBox = 33
+            $scope.isShowConnectionStatusBox = true;
+        }
+    });
 
     $scope.onClickAuthLockButton = function(event) {
         if(!_isAuthed) {
@@ -60,6 +133,13 @@ angular.module('app').controller('MainCtrl', function($scope, $mdDialog,$mdToast
             });
          }
     };
+
+    $scope.onChangeDateSelect = function() {
+        var selectedDate = new Date($scope.chart.select.year,$scope.chart.select.month - 1,$scope.chart.select.date,$scope.chart.select.hours);
+        invalidDateSelect(_startDate,selectedDate);
+        requestStatusList(selectedDate, $scope.chart.reference);
+    };
+
 
     $scope.onClickHumiditySetting = function(event) {
         console.log(event);
@@ -80,7 +160,7 @@ angular.module('app').controller('MainCtrl', function($scope, $mdDialog,$mdToast
 
     function changeAuthState(show) {
         if(show) {
-            $scope.authLockIcon = 'img/ic_lock_open.svg';
+            $scope.authLockIcon = 'img/ic_lock_open_white_48px.svg';
             $scope.isShowCtrlButton = true;
             $scope.ctrlDIColorIndex = COLOR_INDEX_DI;
             $scope.ctrlPowerColorIndex = COLOR_INDEX_CTRL_PWM;
@@ -88,7 +168,7 @@ angular.module('app').controller('MainCtrl', function($scope, $mdDialog,$mdToast
             $scope.ctrlHumidityColorIndex = COLOR_INDEX_CTRL_ON;
             _isAuthed = true;
         } else {
-            $scope.authLockIcon = 'img/ic_lock.svg';
+            $scope.authLockIcon = 'img/ic_lock_white_48px.svg';
             _isAuthed = false;
             $scope.isShowCtrlButton = false;
             $scope.ctrlDIColorIndex = COLOR_INDEX_CTRL_OFF;
@@ -296,6 +376,72 @@ angular.module('app').controller('MainCtrl', function($scope, $mdDialog,$mdToast
             }
         });
     }
+
+    function requestStatusList(_selectDate,_type) {
+        RestService.statusListRx({time : _selectDate.getTime(), type : _type  }).subscribe(function(data) {
+            invalidChart(data);
+        },function(data) {
+            setTimeout(function() {
+                requestStatusList(_selectDate,_type);
+            }, 4000);
+        });
+    }
+
+
+    function requestFirstStatusUpdateTime() {
+        RestService.statusFirstUpdateTimeRx().subscribe(function(data) {
+            _startDate = new Date(data.time);
+            invalidDateSelect(_startDate);
+        }, function(err) {
+           setTimeout(function() {
+               requestFirstStatusUpdateTime();
+           }, 4000);
+        });
+    }
+
+    function invalidChart(statusList) {
+        console.log(statusList);
+        $scope.chart.options.data = statusList;
+
+        $scope.chart.options.data = statusList;
+    }
+
+
+    function invalidDateSelect(_startDate, selectDate) {
+        selectDate = selectDate || new Date();
+        console.log(selectDate);
+        var startDate = new Date(_startDate);
+        var endDate = new Date();
+        var startYear = startDate.getFullYear(), endYear = endDate.getFullYear(),
+                        endMonth = endDate.getMonth(),
+                        startMonth = (endYear == startYear)?startDate.getMonth(): 0,
+                        startDay = (startMonth == endMonth)?startDate.getDate():1,
+                        endDay = (endMonth == selectDate.getMonth())?endDate.getDate():new Date(selectDate.getFullYear(), selectDate.getMonth() + 1, 0).getDate(),
+                        startHour = (startDay == endDay)?startDate.getHours():0,
+                        endHour = (endDay ==selectDate.getDate())?endDate.getHours():23;
+
+        startMonth++; endMonth++;
+        $scope.chart.select.years = []; $scope.chart.select.months = [];
+        $scope.chart.select.dates = []; $scope.chart.select.hourses = [];
+        do {
+            $scope.chart.select.years.push(startYear++);
+        }  while(startYear <= endYear);
+        do {
+            $scope.chart.select.months.push(startMonth++);
+        } while(startMonth <= endMonth);
+        do {
+            $scope.chart.select.dates.push(startDay++);
+        }  while(startDay <= endDay);
+        do {
+            $scope.chart.select.hourses.push(startHour++);
+        }  while(startHour <= endHour);
+        $scope.chart.select.year = selectDate.getFullYear();
+        $scope.chart.select.month = selectDate.getMonth() +1;
+        $scope.chart.select.date = selectDate.getDate();
+        $scope.chart.select.hours = selectDate.getHours();
+
+    }
+
 
     function showToast(message) {
         if(message == _currentMessageOnToast) {

@@ -36,13 +36,11 @@ var DBController = function() {
 
 
 
-
-
-
     persist.initSync();
     var loadedUpdateInfo = persist.getItem(KEY_UPDATE_INFO);
     if(loadedUpdateInfo == undefined || loadedUpdateInfo.lastUpdateMs == undefined) {
         _updateInfo.lastUpdateMs = Date.now();
+        _updateInfo.firstUpdateMs = Date.now();
         persist.setItem(KEY_UPDATE_INFO,_updateInfo);
     } else {
         _updateInfo = loadedUpdateInfo;
@@ -134,6 +132,10 @@ var DBController = function() {
         return data;
     }
 
+
+    this.getFirstUpdateTime = function(){
+        return _updateInfo.firstUpdateMs;
+    }
 
 
     this.readHourRx = function(startTime) {
@@ -231,6 +233,8 @@ var DBController = function() {
             return resultList;
         });
     };
+
+
     function readDataListRx(startTime, endTime) {
         var startParam = KEY_DATA + ":" + ((startTime == undefined)?appendZero(0):appendZero(startTime));
         var endParam = KEY_DATA + ":" + ((endTime == undefined)?'~':appendZero(endTime - 1));

@@ -35,6 +35,17 @@ angular.module('app').service('RestService', function($http) {
         return subject.asObservable();
     };
 
+    this.statusFirstUpdateTimeRx = function (params) {
+        var subject = new Rx.AsyncSubject();
+        $http.post('/status/first',params).success(function (res) {
+            subject.onNext(res);
+            subject.onCompleted();
+        }).error(function (err) {
+            subject.onError(err);
+        });
+        return subject.asObservable();
+    };
+
     this.statusNowByIntervalRx = function () {
         return Rx.Observable.timer(0, 5000).timeInterval().flatMap(function() {
             var subject = new Rx.AsyncSubject();
@@ -82,9 +93,14 @@ angular.module('app').service('RestService', function($http) {
     };
 
 
-    this.listRx = function (param) {
+    /**
+     * DB 에 기록된 상태값들의 리스트를 가져온다.
+     * @param param  type = y:년|m:월|d:날짜|h:시간, time = 기준 시간의 milliseconds
+     * @returns {*} subscribe -> 시간 오름차순으로 정렬된 status 의 리스트.
+     */
+    this.statusListRx = function (param) {
         var subject = new Rx.AsyncSubject();
-        $http.post('/api/image/list',param).success(function (res) {
+        $http.post('/status/list',param).success(function (res) {
             subject.onNext(res);
             subject.onCompleted();
         }).error(function (err) {

@@ -2,12 +2,16 @@
 html, body {
     width: 100%;
     margin: 0;
-    overflow: auto;
-    background-color: white;
+    background-color: #37474F;
+    font-family: RobotoDraft, serif;
+
 }
 
 body {
-    background-color: #dddddd;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overflow-scrolling: touch;
 }
 
 pre {
@@ -16,54 +20,86 @@ pre {
     border-width: 0;
 }
 
-.optWidthFull {
+label {
+    color: #4DB6AC;
+    font-weight: 700;
+    padding: 8px 0 0 8px
+}
+
+.c3-line {
+    stroke-width: 2px;
+}
+.c3-text {
+    font-size: 1.3em;
+    font-family: RobotoDraft, serif;
+}
+
+
+.op-width-full {
     width: 100%;
 }
-.optFullSize {
+.op-both-full {
     height: 100%;
     width: 100%;
 }
 
+.op-corner-s1 {
+    border-radius: 3px;
+}
+.op-circle {
+    border-radius: 50%;
+    width: 200px;
+    height: 200px;
+    /* width and height can be anything, as long as they're equal */
+}
+
+
+
 @media (max-width: 819px) {
-    .MainContainer {
+    .ob-main-container {
         width: 100%;
     }
     .ToolBarSpace {
         height: 48px;
         min-height: 48px;
-        font-size : 16pt;
-        padding: 0 0 0 8px;
+
+    }
+
+    .ob-status {
+        padding : 3px
     }
 
 }
 @media (min-width: 820px) {
-    .MainContainer {
-        width: 820px;
-
+    .ob-main-container {
+        width: 90%;
+        max-width: 1024px;
     }
     .ToolBarSpace {
         height: 58px;
         min-height: 58px;
-        font-size : 24pt;
-        padding: 0 0 2px 8px;
+        padding: 0 0 2px 0;
     }
+
+    .ob-status {
+        padding : 5px
+    }
+}
+
+.VerticalSpace {
+    height: 10px;
 }
 
 
 
-.MainContainer {
+.ob-main-container {
     position: relative;
-    background-color: white;
 }
 
 .ToolBarSpace {
     width:100%;
-    background-color: white;
-    color: #545454;
-    font-weight: bold;
-
+    font-weight: 200;
+    color: #80CBC4;
+    font-size : 12pt;
 }
 
-.ToolBar {
-    position: absolute;
-}

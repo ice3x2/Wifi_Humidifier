@@ -1,9 +1,19 @@
-<div class="optWidthFull">
-    <div class="optWidthFull">
-        <div class="statusBox" layout layout-align="center center" ng-style="statusBox" style="width:100%; background-color: #aaaaaa;color: white;font-size: 30pt;position: relative" >
-            <div class="optWidthFull titleBox" style="position: absolute;left: 5%;bottom: 2%;font-weight: 500;font-size: 14pt;color: #ffffff">{{title}}</div>
-            <div class="optFullSize" ng-transclude style="position: absolute;left: 0;top: 0"></div>
+
+<div class=" op-width-full">
+    <md-whiteframe class="md-whiteframe-z2 op-corner-s1 op-width-full" layout layout-align="center center" style=";font-size: 4em;overflow: hidden;background-color: white">
+        <div class="statusBox" layout layout-align="center center" style="width:100%;color: #333333;font-weight: 900;font-size: 30pt;position: relative;">
+            <div class=" op-width-full titleBox" style="position: absolute;top: 3%;left: 3%;font-weight: 200;font-size: 14pt;color: #222222">{{title}}</div>
+            <div class="op-both-full" ng-transclude style="position: absolute;left: 0;top: 0;"></div>
+            <span ng-style="styleStatusBoxText">
+            {{value}}{{unit}}
+                </span>
+        </div>
+    </md-whiteframe>
+    <!--<div class=" op-width-full">
+        <div class="statusBox op-circle" layout layout-align="center center" ng-style="statusBox" style="width:100%; background-color: #aaaaaa;color: white;font-size: 30pt;position: relative;padding: 20px" >
+            &lt;!&ndash;
+            <div class="op-both-full" ng-transclude style="position: absolute;left: 0;top: 0;font-weight: 900"></div>
             {{value}}{{unit}}
         </div>
-    </div>
+    </div>-->
 </div>

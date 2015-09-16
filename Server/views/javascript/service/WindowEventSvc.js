@@ -32,6 +32,7 @@ angular.module('app').service('WindowEventSvc', function($window) {
         }
         resizeAction();
         resizeTimeoutIdFast = window.setTimeout(resizeAction, 5);
+        // 확인사살.. ㅡ , ㅡ;;
         resizeTimeoutIdDelay = window.setTimeout(resizeAction, 500);
     }
 

@@ -43,6 +43,12 @@ router.post('/now', function(req, res, next) {
 });
 
 
+router.post('/first', function(req, res, next) {
+    log.i("post : " + req.path);
+    res.json({time : dataStore.getFirstUpdateTime()});
+});
+
+
 
 module.exports = router;
 

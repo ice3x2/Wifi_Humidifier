@@ -15,6 +15,10 @@ angular.module('app').directive('ngStatusBox', function (WindowEventSvc) {
         restrict: 'E',
         templateUrl: 'ngStatusBox',
         link: function (scope, element, attrs) {
+            var FONT_SIZE = 38;
+            var TITLE_SIZE = 12;
+            var MAX_WIDTH = 1024;
+
             scope.title = scope.title || 'title';
             scope.value = scope.value || '0';
             scope.colorIndex = scope.colorIndex || [];
@@ -39,12 +43,12 @@ angular.module('app').directive('ngStatusBox', function (WindowEventSvc) {
             function resizeBox(windowWidth) {
                 _boxElement.height(_boxElement.width());
                 if(windowWidth < 720) {
-                    _boxElement.css('font-size',Math.floor(windowWidth / 720* 30) + 'pt');
-                    var titleFontSize = Math.floor(windowWidth / 720 * 12);
+                    _boxElement.css('font-size',Math.floor(windowWidth / MAX_WIDTH* FONT_SIZE) + 'pt');
+                    var titleFontSize = Math.floor(windowWidth / MAX_WIDTH * TITLE_SIZE);
                     _titleElement.css('font-size',titleFontSize < 9?9:titleFontSize + 'pt');
                 } else {
-                    _boxElement.css('font-size','30pt');
-                    _titleElement.css('font-size','12pt');
+                    _boxElement.css('font-size',FONT_SIZE + 'pt');
+                    _titleElement.css('font-size',TITLE_SIZE + 'pt');
                 }
             }
 
@@ -55,12 +59,12 @@ angular.module('app').directive('ngStatusBox', function (WindowEventSvc) {
                     var currentValue = scope.colorIndex[i].value;
                     if(_.isString(scope.value)) {
                         if (currentValue == value) {
-                            scope.statusBox = {'background-color': scope.colorIndex[i].color};
+                            scope.styleStatusBoxText = {'color': scope.colorIndex[i].color};
                             return;
                         }
                     }  else {
                         if (currentValue >= value && nextValue > value) {
-                            scope.statusBox = {'background-color': scope.colorIndex[i].color};
+                            scope.styleStatusBoxText = {'color': scope.colorIndex[i].color};
                             return;
                         }
                     }
@@ -73,7 +77,7 @@ angular.module('app').directive('ngStatusBox', function (WindowEventSvc) {
                     }
                     return false;
                 });
-                scope.statusBox = {'background-color': color};
+                scope.styleStatusBoxText = {'color': color};
             }
 
 

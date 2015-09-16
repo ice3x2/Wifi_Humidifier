@@ -11,11 +11,6 @@ var log = include('ColorLog');
 
 //store.setFanPWM(1).setPowerPWM(1).setMinHumidity(10).setMaxHumidity(50).commit();
 
-var a =  [{id:1},{id:2}];
-console.log(_.find(a, function(obj, idx) {
-    return obj.id == 1;
-}));
-
 var json = [
     { key: 'firstName', value: 2 },
     { key: 'lastName',  value: 21 },
@@ -23,7 +18,7 @@ var json = [
 ];
 json = _.sortBy(json, 'value').reverse();;
 
-console.log(json);
+console.log(_.assign({json : 1, ok : 2, y : {show : true}},{ y : {show : false}}));
 //var log = require('../common/ColorLog');
 /*
 var storage = require('node-persist');

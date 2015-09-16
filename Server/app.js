@@ -26,6 +26,7 @@ app.use('/auth', authRoutes);
 app.use('/ctrl', ctrlRoutes);
 app.use('/status', statusRoutes);
 app.use('/js', express.static(path.join(__dirname, 'build/js')));
+app.use('/bower_components', express.static(path.join(__dirname, 'bower_components')));
 app.use('/css', express.static(path.join(__dirname, 'build/css')));
 app.use('/img', express.static(path.join(__dirname, 'build/img')));
 app.use('/', indexRoutes);
