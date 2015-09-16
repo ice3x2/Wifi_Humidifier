@@ -2,6 +2,8 @@
  * Created by ice3x2 on 2015. 6. 10..
  */
 
+
+
 var app = angular.module('app', ['ngCookies','ngAnimate', 'ngMaterial','angularChart']);
 
 
@@ -17,16 +19,15 @@ angular.module('app').controller('MainCtrl', function($scope, $mdDialog,$mdToast
                                                       COLOR_INDEX_TEMP,COLOR_INDEX_HUMIDITY,COLOR_INDEX_CT,COLOR_INDEX_DI,COLOR_INDEX_OP,
                                                       COLOR_INDEX_CTRL_ON,COLOR_INDEX_CTRL_OFF,COLOR_INDEX_CTRL_PWM) {
 
-
-
-
-
-
-
-
-
-
     var MOBILE_WIDTH = 819;
+
+
+
+
+
+
+
+
 
 
     var _status = {};
@@ -86,6 +87,9 @@ angular.module('app').controller('MainCtrl', function($scope, $mdDialog,$mdToast
                     postfix: '%',
                     name: 'humidity',
                     type: 'spline',
+                }, time: {
+                    axis: 'x',
+                    label: true,
                 }
             }, axis: {
                 y: {
@@ -106,7 +110,7 @@ angular.module('app').controller('MainCtrl', function($scope, $mdDialog,$mdToast
 
     requestStatusStartRepeat();
     requestFirstStatusUpdateTime();
-    requestStatusList(new Date(),$scope.chart.reference);
+    //requestStatusList(new Date(),$scope.chart.reference);
     requestCtrlValue(true);
     changeAuthState(false);
     changeAuthState(false);
@@ -321,9 +325,6 @@ angular.module('app').controller('MainCtrl', function($scope, $mdDialog,$mdToast
 
 
 
-
-
-
     function setPageClickEventLock(show) {
         $scope.isShowLoading = show;
     }
@@ -400,9 +401,98 @@ angular.module('app').controller('MainCtrl', function($scope, $mdDialog,$mdToast
     }
 
     function invalidChart(statusList) {
-        console.log(statusList);
-        $scope.chart.options.data = statusList;
+       /* var selectedDate = new Date($scope.chart.select.year,$scope.chart.select.month - 1,$scope.chart.select.date,$scope.chart.select.hours);
+        var idx = 0;
+        var times = {
+            before : 0,
+            current : 0,
+            next : 0,
+            end : 0
+        };
 
+        function initTimes(startDate, reference, times) {
+            startDate.setMinutes(0); startDate.setMilliseconds(0);
+            var endDate, beforeDate, nextDate ;
+            if(reference == 'd') {
+                startDate.setHours(0);
+                endDate = new Date(startDate); beforeDate = new Date(startDate); nextDate = new Date(startDate);
+                endDate.setDate(startDate.getDate() + 1);
+                beforeDate.setHours(startDate.getHours() -1);
+                nextDate.setHours(startDate.getHours() + 1);
+            } else if(reference == 'h') {
+                endDate = new Date(startDate); beforeDate = new Date(startDate); nextDate = new Date(startDate);
+                endDate.setHours(startDate.getHours() + 1);
+                beforeDate.setMinutes(startDate.getMinutes() -1);
+                nextDate.setMinutes(startDate.getMinutes() + 1);
+            } else if(reference == 'm') {
+                startDate.setHours(0); startDate.setDate(1);
+                endDate = new Date(startDate); beforeDate = new Date(startDate); nextDate = new Date(startDate);
+                endDate.setMonth(startDate.getMonth() + 1);
+                beforeDate.setDate(startDate.getDate() -1);
+                nextDate.setDate(startDate.getDate() + 1);
+            } else if(reference == 'y') {
+                startDate.setHours(0); startDate.setDate(1); startDate.setMonth(0);
+                endDate = new Date(startDate); beforeDate = new Date(startDate); nextDate = new Date(startDate);
+                endDate.setFullYear(startDate.getFullYear() + 1);
+                beforeDate.setMonth(startDate.getMonth() -1);
+                nextDate.setMonth(startDate.getMonth() + 1);
+            }
+            times.before = beforeDate.getTime();
+            times.next = nextDate.getTime();
+            times.current = startDate.getTime();
+            times.end = endDate.getTime();
+        }
+
+        function nextTimes(reference,times) {
+            times.before = times.current;
+            times.current = times.next;
+            var currentDate = new Date(times.current);
+            var nextDate = new Date(times.current);
+            if(reference == 'd') {
+                nextDate.setHours(currentDate.getHours() + 1);
+            } else if(reference == 'h') {
+                nextDate.setMinutes(currentDate.getMinutes() + 1);
+                console.log(new Date(times.current).getMinutes());
+            } else if(reference == 'm') {
+                nextDate.setDate(currentDate.getDate() + 1);
+            } else if(reference == 'y') {
+                nextDate.setMonth(currentDate.getMonth() + 1);
+            }
+            times.next = nextDate.getTime();
+        }
+
+
+        console.log('added');
+        initTimes(selectedDate,$scope.chart.reference, times);
+        var list = [];
+        var listIdx = 0;
+        var dummy = {time : 0, humidity : 0, power : 0, temperature : 0};
+        do {
+            if(idx >= statusList.length || times.current < statusList[idx].time) {
+                dummy.time = times.current;
+                list.push(_.clone(dummy));
+            } else {
+                list.push(statusList[idx]);
+                ++idx;
+            }
+            if($scope.chart.reference == 'h') {
+                list[listIdx].date = new Date(list[listIdx].time).getMinutes();
+            }
+            else if($scope.chart.reference == 'd') {
+                list[listIdx].date = new Date(list[listIdx].time).getHours();
+            }
+            else if($scope.chart.reference == 'm') {
+                list[listIdx].date = new Date(list[listIdx].time).getDate();
+            }
+            else if($scope.chart.reference == 'y') {
+                list[listIdx].date = new Date(list[listIdx].time).getMonth();
+            }
+            nextTimes($scope.chart.reference, times);
+            ++listIdx;
+        } while(times.current < times.end)*/
+
+
+        $scope.chart.options.data = statusList;
         $scope.chart.options.data = statusList;
     }
 
@@ -410,14 +500,15 @@ angular.module('app').controller('MainCtrl', function($scope, $mdDialog,$mdToast
     function invalidDateSelect(_startDate, selectDate) {
         selectDate = selectDate || new Date();
         console.log(selectDate);
+
         var startDate = new Date(_startDate);
         var endDate = new Date();
         var startYear = startDate.getFullYear(), endYear = endDate.getFullYear(),
                         endMonth = endDate.getMonth(),
                         startMonth = (endYear == startYear)?startDate.getMonth(): 0,
-                        startDay = (startMonth == endMonth)?startDate.getDate():1,
+                        startDay = (startMonth == selectDate.getMonth())?startDate.getDate():1,
                         endDay = (endMonth == selectDate.getMonth())?endDate.getDate():new Date(selectDate.getFullYear(), selectDate.getMonth() + 1, 0).getDate(),
-                        startHour = (startDay == endDay)?startDate.getHours():0,
+                        startHour = (startDay == selectDate.getDate())?startDate.getHours():0,
                         endHour = (endDay ==selectDate.getDate())?endDate.getHours():23;
 
         startMonth++; endMonth++;
@@ -439,7 +530,6 @@ angular.module('app').controller('MainCtrl', function($scope, $mdDialog,$mdToast
         $scope.chart.select.month = selectDate.getMonth() +1;
         $scope.chart.select.date = selectDate.getDate();
         $scope.chart.select.hours = selectDate.getHours();
-
     }
 
 
