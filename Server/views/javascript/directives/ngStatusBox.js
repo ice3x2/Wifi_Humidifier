@@ -40,6 +40,7 @@ angular.module('app').directive('ngStatusBox', function (WindowEventSvc) {
                 invalidBackgroundColors(scope.value);
             });
 
+
             function resizeBox(windowWidth) {
                 _boxElement.height(_boxElement.width());
                 if(windowWidth < 720) {

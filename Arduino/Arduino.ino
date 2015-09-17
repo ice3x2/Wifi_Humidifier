@@ -630,14 +630,16 @@ void printConfig(CONFIG* config) {
   Serial.println("d : port - " + String(config->port));
 }
 
-
-
+long _lastReadDUT22 = 0;
 
 void readTHVlaue() {
+  if(millis() - _lastReadDUT22  < 3000) return;
+  _lastReadDUT22 = millis();
   DHT22_ERROR_t errorCode = _dht22.readData();
   if (errorCode == DHT_ERROR_NONE || errorCode  == DHT_ERROR_CHECKSUM) {
     _thValue.temperature = _dht22.getTemperatureC() * 10;
     _thValue.humidity = _dht22.getHumidity() * 10;
+    Serial.println(_thValue.humidity);
   } else {
     // 에러.
     _thValue.humidity = NIL_VALUE;

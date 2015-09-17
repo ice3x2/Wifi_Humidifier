@@ -399,13 +399,25 @@ angular.module('app').controller('MainCtrl', function($scope, $mdDialog,$mdToast
     }
 
     function invalidChart(statusList) {
+        //var scrolled = document.body.scrollTop;
+        //데이터가 바뀌면 스크롤이 0 으로 되어버리는 현상이 나타남.
         $scope.chart.options.data = StatusListNormalizer.normalizeStatusList(statusList, $scope.chart.reference,
             new Date($scope.chart.select.year,$scope.chart.select.month - 1,$scope.chart.select.date,$scope.chart.select.hours));
+
+        console.log('chart set');
+        console.log(document);
+
+        /*document.body.scrollTop = scrolled;
+        setTimeout(function() {
+            document.body.scrollTop = scrolled;
+        },0);*/
+
     }
 
 
     function invalidDateSelect(_startDate, selectDate) {
-        _chartLabelIntervalPoint = ($scope.chart.reference == 'h')?8:($scope.chart.reference == 'd' || $scope.chart.reference == 'm')?4:2;
+        var reference = $scope.chart.reference;
+        _chartLabelIntervalPoint = (reference == 'h')?8:(reference == 'd' || reference == 'm')?4:2;
         selectDate = selectDate || new Date();
         console.log(selectDate);
 
@@ -438,6 +450,13 @@ angular.module('app').controller('MainCtrl', function($scope, $mdDialog,$mdToast
         $scope.chart.select.month = selectDate.getMonth() +1;
         $scope.chart.select.date = selectDate.getDate();
         $scope.chart.select.hours = selectDate.getHours();
+        // 선택된 selector 를 붉은색으로 만든다.
+        $scope.chart.select.styleYear = $scope.chart.select.styleMonth = $scope.chart.select.styleDate = $scope.chart.select.styleHours = {};
+        if(reference == 'y') $scope.chart.select.styleYear = {color : 'red','font-weight' : 900};
+        if(reference == 'm') $scope.chart.select.styleMonth = {color : 'red','font-weight' : 900};
+        if(reference == 'd') $scope.chart.select.styleDate = {color : 'red','font-weight' : 900};
+        if(reference == 'h') $scope.chart.select.styleHours = {color : 'red','font-weight' : 900};
+
     }
 
 
