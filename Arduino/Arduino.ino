@@ -1,6 +1,8 @@
 #include <SoftwareSerial.h>
 #include <EEPROM.h>
 #include <DHT22.h>
+#include <PWM.h>
+
 #include "EspResponseChecker.h"
 #include "Controller.h"
 
@@ -8,12 +10,13 @@
 #define WIFI_TX 3
 
 #define FAN_CTR 9
-#define PW_CTR 6
+#define PW_CTR 10
 
-#define LED_PIN 13
+#define LED_PIN 12
 #define RESET_PIN 0
 #define DHT22_PIN 7
-#define WATERGAUGE_PIN 2
+#define WATERGAUGE_READ_ANPIN 2
+#define POWER_READ_ANPIN 1
 
 #define BUFF_SIZE 128
 #define DEBUG
@@ -77,9 +80,6 @@ void resetBuffer();
 uint8_t closeConnection(int ipdID = -1);
 
 
-
-
-
 // 상태값 제어 함수.
 void addState(uint16_t state);
 void removeState(uint16_t state);
@@ -104,6 +104,8 @@ ESPResponseChecker _resChecker;
 
 
 void setup() {
+
+  
   pinMode(LED_PIN, OUTPUT);
   digitalWrite(LED_PIN, HIGH);
   //pinMode(RESET_PIN,INPUT);
@@ -111,6 +113,9 @@ void setup() {
 
   Serial.begin(115200);
   Serial.println("d : Ready..");
+
+  Serial.println((SetPinFrequencySafe(FAN_CTR, 1200))?"true":"false");
+  Serial.println(SetPinFrequencySafe(PW_CTR, 20000)?"true":"false");
 
   loadConfig();
   if (!checkConfig(&_config)) {
@@ -129,7 +134,6 @@ void setup() {
     }
     delay(1000);
     sendATCmd("AT+CIFSR\r\n");
-    
   }
 }
 
@@ -251,6 +255,9 @@ bool sendStatusData() {
   _resChecker.reset();
   if (isState(STATE_PUSH_BUTTON)) return true;
   addState(STATE_ON_SEND_STATUS);
+
+  int pw = (analogRead(WATERGAUGE_READ_ANPIN) > 200)?0:-1;
+  pw = (analogRead(POWER_READ_ANPIN) > 200)?1:pw;  
   String strStatus =  "GET /data?key=";
   strStatus += _config.key;
   strStatus += "&t=";
@@ -258,7 +265,7 @@ bool sendStatusData() {
   strStatus += "&h=";
   strStatus += _thValue.humidity;
   strStatus += "&w=";
-  strStatus += "0";
+  strStatus += pw;
   strStatus += " HTTP/1.0\r\nContent-Type: text/plain\r\nConnection: close\r\n\r\n";
   if (!connectServer(3000)) {
     Serial.println("c--error");
@@ -336,6 +343,7 @@ bool sendStatusData() {
     wifi.read();
   }
   sendATCmd("AT\r\n");
+  onPWMControlCallback(_controlValues[CONTROL_VALUE_PWR_PWM],_controlValues[CONTROL_VALUE_FAN_PWM]);
   return true;
   
 }
@@ -647,16 +655,23 @@ void readTHVlaue() {
   }
 }
 
-
+uint8_t latestFanPWM = 0;
+uint8_t latestPowerPWM = 0;
 
 void onPWMControlCallback(uint8_t powerPWM, uint8_t fanPWM) {
-  //Serial.println(powerPWM);
-  //Serial.println(fanPWM);
-  analogWrite(PW_CTR, powerPWM);
-  analogWrite(FAN_CTR, fanPWM);
+  if(latestPowerPWM != powerPWM)  {
+      pwmWrite(PW_CTR, powerPWM);  
+      latestPowerPWM = powerPWM;
+  }
+  if(latestFanPWM != fanPWM)  {
+      pwmWrite(FAN_CTR, fanPWM);  
+      latestFanPWM = fanPWM;
+  }
+  
+ 
 }
 
 
 bool onWaterStateCallback() {
-  return analogRead(WATERGAUGE_PIN) < 200;
+  return analogRead(WATERGAUGE_READ_ANPIN) < 200;
 }   

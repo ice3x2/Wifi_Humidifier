@@ -8,9 +8,9 @@ var log = include('ColorLog');
 
 
 const KEY_CONTROL_VALUE = "KEY_CONTROL_VALUE";
-const PWM_MIN_POWER = 220;
+const PWM_MIN_POWER = 200;
 const PWM_MAX_POWER = 255;
-const PWM_MIN_FAN = 220;
+const PWM_MIN_FAN = 2;
 const PWM_MAX_FAN = 255;
 
 var ControlValueStore = function () {
@@ -39,14 +39,26 @@ var ControlValueStore = function () {
         return _this;
     };
 
+    this.getMinHumidity = function() {
+        return _controlValue.minHumidity;
+    };
+
     this.setMaxHumidity = function(value) {
         _controlValue.maxHumidity = value || _controlValue.maxHumidity;
         return _this;
     };
 
+    this.getMaxHumidity = function() {
+        return _controlValue.maxHumidity;
+    };
+
     this.setThresholdDiscomfort = function(value) {
         _controlValue.thresholdDiscomfort = value || _controlValue.thresholdDiscomfort;
         return _this;
+    };
+
+    this.getThresholdDiscomfort = function(value) {
+        return _controlValue.thresholdDiscomfort;
     };
 
 

@@ -60,8 +60,9 @@ angular.module('app').controller('MainCtrl', function($scope, $mdDialog,$mdToast
 
     },1000);
 
+    // 이런 무식하고 멍청한 방법을 쓰는 이유는 그냥 로딩 화면이 짧게 지나가면 오히려 더 이상해 보이기 때문이다.
     var checkLoadingStatus = function() {
-        if(!_.isUndefined(_status.humidity)) {
+        if(!_.isUndefined($scope.chart) && $scope.chart.isLoaded) {
             $scope.isHideLoadingScene = true;
         } else {
             setTimeout(checkLoadingStatus, 100);
@@ -146,6 +147,7 @@ angular.module('app').controller('MainCtrl', function($scope, $mdDialog,$mdToast
     function initChartOptions() {
 
         $scope.chart = {
+            isLoaded : false,
             select: {
                 years: [],
                 months: [],
@@ -412,8 +414,8 @@ angular.module('app').controller('MainCtrl', function($scope, $mdDialog,$mdToast
         //데이터가 바뀌면 스크롤이 0 으로 되어버리는 현상이 나타남.
         $scope.chart.options.data = StatusListNormalizer.normalizeStatusList(statusList, $scope.chart.reference,
             new Date($scope.chart.select.year,$scope.chart.select.month - 1,$scope.chart.select.date,$scope.chart.select.hours));
-
         console.log('chart set');
+        $scope.chart.isLoaded = true;
         console.log(document);
 
         /*document.body.scrollTop = scrolled;
