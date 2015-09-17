@@ -3,7 +3,7 @@
     <md-whiteframe class="md-whiteframe-z2 op-corner-s1 op-width-full" layout layout-align="center center" style=";font-size: 4em;overflow: hidden;background-color: white">
         <div class="statusBox" layout layout-align="center center" style="width:100%;color: #333333;font-weight: 900;font-size: 30pt;position: relative;">
             <div class=" op-width-full titleBox" style="position: absolute;top: 3%;left: 3%;font-weight: 200;font-size: 14pt;color: #222222">{{title}}</div>
-            <div class="op-both-full" ng-transclude style="position: absolute;left: 0;top: 0;"></div>
+            <div class="op-both-full" ng-transclude style="position: absolute;bottom: 0;right: 0;z-index: 1;width: 100%;height: 250px"></div>
             <span ng-style="styleStatusBoxText">
             {{value}}{{unit}}
                 </span>

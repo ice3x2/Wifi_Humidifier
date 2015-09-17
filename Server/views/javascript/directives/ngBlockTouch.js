@@ -3,17 +3,17 @@
  */
 
 
-angular.module('app').directive('ngLoading', function ($animate) {
+angular.module('app').directive('ngBlockTouch', function ($animate) {
     return {
         replace : true,
         scope : {
-            ngShowLoading : '=?'
+            ngEnableBlock : '=?'
         },
         transclude : true,
         restrict: 'E',
-        templateUrl: 'ngLoading',
+        templateUrl: 'ngBlockTouch',
         link: function(scope, element, attrs) {
-            scope.$watch('ngShowLoading', function(value) {
+            scope.$watch('ngEnableBlock', function(value) {
                 scope.isShow = value;
             });
 

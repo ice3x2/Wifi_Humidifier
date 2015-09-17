@@ -44,8 +44,10 @@ angular.module('app').directive('ngStatusBox', function (WindowEventSvc) {
             function resizeBox(windowWidth) {
                 _boxElement.height(_boxElement.width());
                 if(windowWidth < 720) {
-                    _boxElement.css('font-size',Math.floor(windowWidth / MAX_WIDTH* FONT_SIZE) + 'pt');
                     var titleFontSize = Math.floor(windowWidth / MAX_WIDTH * TITLE_SIZE);
+                    var valueFontSize = Math.floor(windowWidth / MAX_WIDTH* FONT_SIZE);
+                    _boxElement.css('font-size',valueFontSize < 24?24:titleFontSize + 'pt');
+
                     _titleElement.css('font-size',titleFontSize < 9?9:titleFontSize + 'pt');
                 } else {
                     _boxElement.css('font-size',FONT_SIZE + 'pt');

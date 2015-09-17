@@ -1,10 +1,6 @@
-/**
- * Created by ice3x2 on 2015. 6. 10..
- */
 
 
-
-var app = angular.module('app', ['ngCookies','ngAnimate', 'ngMaterial','angularChart']);
+var app = angular.module('app', ['ngCookies','ngAnimate', 'ngMaterial','angularChart','angular-spinkit']);
 
 
 /**Angular Material Config*/
@@ -15,7 +11,8 @@ angular.module('app').config(function($mdThemingProvider) {
 });
 
 
-angular.module('app').controller('MainCtrl', function($scope, $mdDialog,$mdToast,$cookies,RestService,WindowEventSvc,StatusListNormalizer,
+angular.module('app').controller('MainCtrl', function($scope, $mdDialog,$mdToast,$cookies,
+                                                      RestService,WindowEventSvc,StatusListNormalizer,
                                                       COLOR_INDEX_TEMP,COLOR_INDEX_HUMIDITY,COLOR_INDEX_CT,COLOR_INDEX_DI,COLOR_INDEX_OP,
                                                       COLOR_INDEX_CTRL_ON,COLOR_INDEX_CTRL_OFF,COLOR_INDEX_CTRL_PWM) {
 
@@ -48,22 +45,29 @@ angular.module('app').controller('MainCtrl', function($scope, $mdDialog,$mdToast
     $scope.diValue = 'NC ';
     $scope.ctValue = 'NC ';
 
-    $scope.isShowLoading = false;
-
-
-
-
+    // 쿠키로부터 세션 정보 삭제.
     $cookies.remove('sid');
 
+    // 1초간의 딜레이를 주는 이유는, 그냥 로딩 화면을 더 보여주고 싶어서.
+    // 또한 Angular.js 롤 통한 화면 랜더링이 완료되지 않은 상테에서 데이터 출력을 할 수 없기 때문에 딜레이를 설정한다.
     setTimeout(function() {
+        initChartOptions();
+        changeAuthState(false);
         requestStatusList(new Date(),$scope.chart.reference);
         requestStatusStartRepeat();
         requestFirstStatusUpdateTime();
+        requestCtrlValue(true);
+
     },1000);
-    initChartOptions();
-    requestCtrlValue(true);
-    changeAuthState(false);
-    changeAuthState(false);
+
+    var checkLoadingStatus = function() {
+        if(!_.isUndefined(_status.humidity)) {
+            $scope.isHideLoadingScene = true;
+        } else {
+            setTimeout(checkLoadingStatus, 100);
+        }
+    };
+    setTimeout(checkLoadingStatus,100);
 
     WindowEventSvc.addResizeCallback(function(newValue) {
         if(newValue.width > MOBILE_WIDTH) {
@@ -74,6 +78,8 @@ angular.module('app').controller('MainCtrl', function($scope, $mdDialog,$mdToast
             $scope.isShowConnectionStatusBox = true;
         }
     });
+
+
 
     $scope.onClickAuthLockButton = function(event) {
         if(!_isAuthed) {
@@ -89,7 +95,10 @@ angular.module('app').controller('MainCtrl', function($scope, $mdDialog,$mdToast
     };
 
     $scope.onChangeDateSelect = function() {
+        //console.log($scope.chart.select.hours);
+
         var selectedDate = new Date($scope.chart.select.year,$scope.chart.select.month - 1,$scope.chart.select.date,$scope.chart.select.hours);
+
         invalidDateSelect(_startDate,selectedDate);
         requestStatusList(selectedDate, $scope.chart.reference);
     };
@@ -432,30 +441,33 @@ angular.module('app').controller('MainCtrl', function($scope, $mdDialog,$mdToast
                         endHour = (endDay ==selectDate.getDate())?endDate.getHours():23;
 
         startMonth++; endMonth++;
-        $scope.chart.select.years = []; $scope.chart.select.months = [];
-        $scope.chart.select.dates = []; $scope.chart.select.hourses = [];
+        var years = [], months = [], hourses = [],dates = [];
         do {
-            $scope.chart.select.years.push(startYear++);
+            years.push(startYear++);
         }  while(startYear <= endYear);
         do {
-            $scope.chart.select.months.push(startMonth++);
+            months.push(startMonth++);
         } while(startMonth <= endMonth);
         do {
-            $scope.chart.select.dates.push(startDay++);
+            dates.push(startDay++);
         }  while(startDay <= endDay);
         do {
-            $scope.chart.select.hourses.push(startHour++);
+            hourses.push(startHour++);
         }  while(startHour <= endHour);
-        $scope.chart.select.year = selectDate.getFullYear();
-        $scope.chart.select.month = selectDate.getMonth() +1;
-        $scope.chart.select.date = selectDate.getDate();
-        $scope.chart.select.hours = selectDate.getHours();
+        $scope.chart.select.years = years; $scope.chart.select.months = months;
+        $scope.chart.select.dates = dates; $scope.chart.select.hourses = hourses;
+        $scope.chart.select.year =  selectDate.getFullYear() + '';
+        $scope.chart.select.month = (selectDate.getMonth() +1) + '';
+        $scope.chart.select.date = selectDate.getDate() + '';
+        $scope.chart.select.hours =  selectDate.getHours() + '';
+        console.log($scope.chart);
         // 선택된 selector 를 붉은색으로 만든다.
-        $scope.chart.select.styleYear = $scope.chart.select.styleMonth = $scope.chart.select.styleDate = $scope.chart.select.styleHours = {};
-        if(reference == 'y') $scope.chart.select.styleYear = {color : 'red','font-weight' : 900};
-        if(reference == 'm') $scope.chart.select.styleMonth = {color : 'red','font-weight' : 900};
-        if(reference == 'd') $scope.chart.select.styleDate = {color : 'red','font-weight' : 900};
-        if(reference == 'h') $scope.chart.select.styleHours = {color : 'red','font-weight' : 900};
+        $scope.chart.select.styleYear =  $scope.chart.select.styleMonth = $scope.chart.select.styleDate = $scope.chart.select.styleHours = {'background-color' : '#ffffff'};
+        var selectedColor = {'background-color' : '#455A64', color : '#ffffff'};
+        if(reference == 'y') $scope.chart.select.styleYear = selectedColor;
+        if(reference == 'm') $scope.chart.select.styleMonth = selectedColor;
+        if(reference == 'd') $scope.chart.select.styleDate =  selectedColor;
+        if(reference == 'h') $scope.chart.select.styleHours = selectedColor;
 
     }
 

@@ -23,6 +23,7 @@
     "angular-chart": "https://github.com/ice3x2/angular-chart.git#e4593eabd9b84732d179efd001c49169e096a216",
     "angular-cookies": "~1.4.5",
     "angular-material": "0.11.0",
+    "angular-spinkit": "~0.3.3",
     "crypto-js": "~3.1.5",
     "jquery": "~2.1.4",
     "lodash": "~3.10.1",
