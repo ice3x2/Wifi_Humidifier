@@ -35,7 +35,6 @@ var DBController = function() {
     var _this = this;
 
 
-
     persist.initSync();
     var loadedUpdateInfo = persist.getItem(KEY_UPDATE_INFO);
     if(loadedUpdateInfo == undefined || loadedUpdateInfo.lastUpdateMs == undefined) {
@@ -77,7 +76,7 @@ var DBController = function() {
      *
      * @param value 200-255 사이의 값.
      */
-    this.putPowerPWM = function(value) {
+    this.putPower = function(value) {
         _data.ctrlPower = value || 0;
         return _this;
 
@@ -86,7 +85,7 @@ var DBController = function() {
      *
      * @param valued 200-255 사이의 값.
      */
-    this.putFanPWM = function(value) {
+    this.putFan = function(value) {
         _data.ctrlFan = value || 0;
         return _this;
     };

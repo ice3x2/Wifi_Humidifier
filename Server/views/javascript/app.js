@@ -11,12 +11,13 @@ angular.module('app').config(function($mdThemingProvider) {
 });
 
 
-angular.module('app').controller('MainCtrl', function($scope, $mdDialog,$mdToast,$cookies,
-                                                      RestService,WindowEventSvc,StatusListNormalizer,
+angular.module('app').controller('MainCtrl', function($scope, $mdDialog,$mdToast,$cookies,$window,
+                                                      RestService,StatusListNormalizer,
                                                       COLOR_INDEX_TEMP,COLOR_INDEX_HUMIDITY,COLOR_INDEX_CT,COLOR_INDEX_DI,COLOR_INDEX_OP,
                                                       COLOR_INDEX_CTRL_ON,COLOR_INDEX_CTRL_OFF,COLOR_INDEX_CTRL_PWM) {
 
     var MOBILE_WIDTH = 819;
+    var MAX_WIDTH = 1024;
 
 
     var _temperatureChartIndex = 0;
@@ -27,6 +28,9 @@ angular.module('app').controller('MainCtrl', function($scope, $mdDialog,$mdToast
     var _isAuthed = false;
     var _currentMessageOnToast = '';
     var _startDate = new Date();
+    var _windowEle = angular.element($window);
+
+    _windowEle.resize(resizeCallback);
     $scope.tempColorIndex = COLOR_INDEX_TEMP;
     $scope.humidityColorIndex = COLOR_INDEX_HUMIDITY;
     $scope.ctColorIndex = COLOR_INDEX_CT;
@@ -38,7 +42,7 @@ angular.module('app').controller('MainCtrl', function($scope, $mdDialog,$mdToast
     $scope.ctrlFanColorIndex = COLOR_INDEX_CTRL_OFF;
     $scope.ctrlHumidityColorIndexColorIndex = COLOR_INDEX_CTRL_OFF;
 
-    $scope.flexStatusBox = 25;
+    //$scope.flexStatusBox = 25;
 
     $scope.tempValue = 'NC ';
     $scope.humidityValue = 'NC ';
@@ -47,38 +51,30 @@ angular.module('app').controller('MainCtrl', function($scope, $mdDialog,$mdToast
 
     // 쿠키로부터 세션 정보 삭제.
     $cookies.remove('sid');
+    initChartOptions();
+    changeAuthState(false);
+    requestStatusStartRepeat();
+    requestFirstStatusUpdateTime();
+    requestCtrlValue(true);
 
-    // 1초간의 딜레이를 주는 이유는, 그냥 로딩 화면을 더 보여주고 싶어서.
-    // 또한 Angular.js 롤 통한 화면 랜더링이 완료되지 않은 상테에서 데이터 출력을 할 수 없기 때문에 딜레이를 설정한다.
+
     setTimeout(function() {
-        initChartOptions();
-        changeAuthState(false);
         requestStatusList(new Date(),$scope.chart.reference);
-        requestStatusStartRepeat();
-        requestFirstStatusUpdateTime();
-        requestCtrlValue(true);
-
     },1000);
 
     // 이런 무식하고 멍청한 방법을 쓰는 이유는 그냥 로딩 화면이 짧게 지나가면 오히려 더 이상해 보이기 때문이다.
     var checkLoadingStatus = function() {
         if(!_.isUndefined($scope.chart) && $scope.chart.isLoaded) {
             $scope.isHideLoadingScene = true;
+            resizeCallbackByDelay();
         } else {
             setTimeout(checkLoadingStatus, 100);
         }
     };
     setTimeout(checkLoadingStatus,100);
 
-    WindowEventSvc.addResizeCallback(function(newValue) {
-        if(newValue.width > MOBILE_WIDTH) {
-            $scope.flexStatusBox = 25;
-            $scope.isShowConnectionStatusBox = false;
-        } else {
-            $scope.flexStatusBox = 33
-            $scope.isShowConnectionStatusBox = true;
-        }
-    });
+
+
 
 
 
@@ -96,10 +92,7 @@ angular.module('app').controller('MainCtrl', function($scope, $mdDialog,$mdToast
     };
 
     $scope.onChangeDateSelect = function() {
-        //console.log($scope.chart.select.hours);
-
         var selectedDate = new Date($scope.chart.select.year,$scope.chart.select.month - 1,$scope.chart.select.date,$scope.chart.select.hours);
-
         invalidDateSelect(_startDate,selectedDate);
         requestStatusList(selectedDate, $scope.chart.reference);
     };
@@ -119,8 +112,6 @@ angular.module('app').controller('MainCtrl', function($scope, $mdDialog,$mdToast
         console.log(event);
         showSetDiscomfortIndexThresholdDialog(event);
     };
-
-
 
     function changeAuthState(show) {
         if(show) {
@@ -200,7 +191,6 @@ angular.module('app').controller('MainCtrl', function($scope, $mdDialog,$mdToast
         $mdDialog.show({
             controller: AuthDialogController,
             templateUrl: 'ngDlgAuth',
-            //parent: angular.element(document.body),
             targetEvent: event,
             clickOutsideToClose:false,
             escapeToClose : true
@@ -379,7 +369,7 @@ angular.module('app').controller('MainCtrl', function($scope, $mdDialog,$mdToast
             $scope.humiditySettingValue = 'NC';
             $scope.fanValue = 'NC';
             $scope.DISettingValue = 'NC';
-            if(_.isUndefined(err.auth) && isRepeat === true) {
+            if(!_.isUndefined(err.auth) && isRepeat === true) {
                 setTimeout(function () {
                     requestCtrlValue(isRepeat), 5000
                 });
@@ -496,13 +486,41 @@ angular.module('app').controller('MainCtrl', function($scope, $mdDialog,$mdToast
     }
 
 
+
+
+    function resizeCallbackByDelay() {
+        resizeCallback();
+        setTimeout(function() {
+            resizeCallback();
+        },100);
+    }
+
+    function resizeCallback() {
+        var width = _windowEle.width();
+        var mainContainerWidth = $('.ob-main-container').width();
+        var fontRatio = width / MAX_WIDTH;
+        fontRatio = (fontRatio > 1)?1.0:fontRatio;
+        if(width > MOBILE_WIDTH) {
+            // 12 는 padding  사이즈.
+            var statusWidth = mainContainerWidth / 4 - 12;
+            angular.element('._ob-status-ct').hide();
+            angular.element('.ob-status').width(statusWidth).height(statusWidth);
+            $scope.statusBoxFontRatio = fontRatio;
+        } else {
+            var statusWidth = mainContainerWidth / 3 - 9;
+            angular.element('._ob-status-ct').show();
+            angular.element('.ob-status').width(statusWidth).height(statusWidth);
+            $scope.statusBoxFontRatio = fontRatio;
+        }
+    }
+
+
     function startShowNoWaterAlert() {
         if(!_isRunNoWaterAlert) {
             runNoWaterAlert();
             _isRunNoWaterAlert = true;
         }
     }
-
 
     function runNoWaterAlert() {
         var changeCount = 0;

@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html ng-app='app'>
 <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge"/>
     <meta name="viewport" content="width=device-width, user-scalable=no">
     <meta name="theme-color" content="#607D8B">
     <META http-equiv="Expires" content="-1">
@@ -40,6 +41,7 @@
 
 <body ng-controller='MainCtrl' >
 
+
     <div class="ob-loading-scene" layout layout-align="center center" style="" ng-hide="isHideLoadingScene">
         <rotating-plane-spinner></rotating-plane-spinner>
     </div>
@@ -58,73 +60,68 @@
 
             <div class="op-width-full"  layout layout-wrap style="padding: 0 3px 0 3px;">
                 <!--온도 -->
-                <ng-status-box class="ob-status" flex="{{flexStatusBox}}" title="Temperature" value="tempValue" color-index="tempColorIndex"  unit="°C" ></ng-status-box>
+                <ng-status-box class="ob-status" font-ratio="{{statusBoxFontRatio}}" title="Temperature" value="tempValue" color-index="tempColorIndex"  unit="°C" ></ng-status-box>
                 <!--습도 -->
-                <ng-status-box class="ob-status" flex="{{flexStatusBox}}" title="Humidity" value="humidityValue" unit="%" color-index="humidityColorIndex" ></ng-status-box>
+                <ng-status-box class="ob-status" font-ratio="{{statusBoxFontRatio}}" title="Humidity" value="humidityValue" unit="%" color-index="humidityColorIndex" ></ng-status-box>
                 <!--불쾌지수 -->
-                <ng-status-box class="ob-status" flex="{{flexStatusBox}}" title="Discomfort index" value="diValue" color-index="diColorIndex"  ></ng-status-box>
+                <ng-status-box class="ob-status"  font-ratio="{{statusBoxFontRatio}}" title="Discomfort index" value="diValue" color-index="diColorIndex"  ></ng-status-box>
                 <!--동작 상태-->
-                <ng-status-box class="ob-status" flex="{{flexStatusBox}}" title="Operation status" value="opValue" color-index="opColorIndex"   ></ng-status-box>
+                <ng-status-box class="ob-status" font-ratio="{{statusBoxFontRatio}}" title="Operation status" value="opValue" color-index="opColorIndex"   ></ng-status-box>
                 <!--습도 설정 값-->
-                <ng-status-box class="ob-status" flex="{{flexStatusBox}}" title="Humidity settings" value="humiditySettingValue"  unit="%" color-index="ctrlHumidityColorIndex" >
-                    <md-icon class="ob-ctrl-icon" flex="{{flexStatusBox}}" md-svg-icon="img/ic_settings_black_48px.svg" ng-click="onClickHumiditySetting($event)" ng-show="isShowCtrlButton"></md-icon>
+                <ng-status-box class="ob-status"  font-ratio="{{statusBoxFontRatio}}"  title="Humidity settings" value="humiditySettingValue"  unit="%" color-index="ctrlHumidityColorIndex" >
+                    <md-icon class="ob-ctrl-icon"  md-svg-icon="img/ic_settings_black_48px.svg" ng-click="onClickHumiditySetting($event)" ng-show="isShowCtrlButton"></md-icon>
                 </ng-status-box>
                 <!--불쾌지수 설정 값-->
-                <ng-status-box class="ob-status" flex="{{flexStatusBox}}" title="Discomfort index limit" value="DISettingValue"  color-index="ctrlDIColorIndex" unit="" >
+                <ng-status-box class="ob-status"  font-ratio="{{statusBoxFontRatio}}"  title="Discomfort index limit" value="DISettingValue"  color-index="ctrlDIColorIndex" unit="" >
                     <md-icon class="ob-ctrl-icon" md-svg-icon="img/ic_settings_black_48px.svg" ng-click="onClickDiscomfortIndexThresholdSetting($event)"ng-show="isShowCtrlButton"  ></md-icon>
                 </ng-status-box>
                 <!--전원 PWM-->
-                <ng-status-box class="ob-status" flex="{{flexStatusBox}}" title="Power" value="powerValue" unit="%" color-index="ctrlPowerColorIndex" >
+                <ng-status-box class="ob-status" font-ratio="{{statusBoxFontRatio}}"  title="Power" value="powerValue" unit="%" color-index="ctrlPowerColorIndex" >
                     <md-icon class="ob-ctrl-icon" md-svg-icon="img/ic_settings_black_48px.svg" ng-click="onClickPowerPwmSetting($event)" ng-show="isShowCtrlButton"></md-icon>
                 </ng-status-box>
                 <!--팬 PWM-->
-                <ng-status-box class="ob-status" flex="{{flexStatusBox}}" title="Fan" value="fanValue" unit="%" color-index="ctrlFanColorIndex" >
+                <ng-status-box class="ob-status" font-ratio="{{statusBoxFontRatio}}"  title="Fan" value="fanValue" unit="%" color-index="ctrlFanColorIndex" >
                     <md-icon class="ob-ctrl-icon" md-svg-icon="img/ic_settings_black_48px.svg" ng-click="onClickPowerPwmSetting($event)" ng-show="isShowCtrlButton"></md-icon>
                 </ng-status-box>
-                <ng-status-box class="ob-status" flex="33" ng-show="isShowConnectionStatusBox" title="Connection status" value="ctValue" color-index="ctColorIndex"   ></ng-status-box>
+                <ng-status-box class="ob-status _ob-status-ct"  font-ratio="{{statusBoxFontRatio}}"  title="Connection status" value="ctValue" color-index="ctColorIndex"   ></ng-status-box>
 
 
                 <!-- -------------------------------------------- 상태 그래프 (Status chart) -------------------------------------------- -->
-                <md-whiteframe class="md-whiteframe-z2 op-corner-s1 op-width-full" layout-wrap layout layout-align="start center" style="margin: 5px; overflow: hidden;background-color: white">
-                        <span layout layout-align="center center" style="padding: 0 0 0 8px;height: 50px; font-weight: 200;font-size: 0.9em;color: #222222;">
-                           Reference date :
-                        </span>
-                    <div layout style="margin: 0px 0 0 8px;">
-                        &nbsp;
-                        <select name="year" ng-change="onChangeDateSelect()" ng-model="chart.select.year" ng-style="chart.select.styleYear">
-                            <option ng-repeat="year in chart.select.years" ng-selected="{{chart.select.year == year}}"  value="{{year}}"  >{{year}}</option>
-                        </select>
-                        &nbsp;
-                        <select ng-change="onChangeDateSelect()" ng-model="chart.select.month" ng-style="chart.select.styleMonth">
-                            <option ng-repeat="month in chart.select.months"  ng-selected="{{chart.select.month == month}}" value="{{month}}">{{month}}</option>
-                        </select>
-                        &nbsp;
-                        <select ng-change="onChangeDateSelect()" ng-model="chart.select.date"  ng-style="chart.select.styleDate">
-                            <option ng-repeat="date in chart.select.dates"  ng-selected="{{chart.select.date == date}}" value="{{date}}">{{date}}</option>
-                        </select>
-                        &nbsp;
-                        <select ng-change="onChangeDateSelect()" ng-model="chart.select.hours" ng-style="chart.select.styleHours" >
-                            <option ng-repeat="hours in chart.select.hourses"  ng-selected="{{chart.select.hours == hours}}" value="{{hours}}">{{hours}}</option>
-                        </select>
-                    </div>
+                    <md-whiteframe class="md-whiteframe-z2 op-corner-s1 op-width-full" layout-wrap layout layout-align="start center" style="margin: 5px; overflow: hidden;background-color: white">
+                            <span layout layout-align="center center" style="padding: 0 0 0 8px;height: 50px; font-weight: 200;font-size: 0.9em;color: #222222;">
+                               Reference date :
+                            </span>
+                        <div layout style="margin: 0px 0 0 8px;">
+                            &nbsp;
+                            <select name="year" ng-change="onChangeDateSelect()" ng-model="chart.select.year" ng-style="chart.select.styleYear">
+                                <option ng-repeat="year in chart.select.years" ng-selected="{{chart.select.year == year}}"  value="{{year}}"  >{{year}}</option>
+                            </select>
+                            &nbsp;
+                            <select ng-change="onChangeDateSelect()" ng-model="chart.select.month" ng-style="chart.select.styleMonth">
+                                <option ng-repeat="month in chart.select.months"  ng-selected="{{chart.select.month == month}}" value="{{month}}">{{month}}</option>
+                            </select>
+                            &nbsp;
+                            <select ng-change="onChangeDateSelect()" ng-model="chart.select.date"  ng-style="chart.select.styleDate">
+                                <option ng-repeat="date in chart.select.dates"  ng-selected="{{chart.select.date == date}}" value="{{date}}">{{date}}</option>
+                            </select>
+                            &nbsp;
+                            <select ng-change="onChangeDateSelect()" ng-model="chart.select.hours" ng-style="chart.select.styleHours" >
+                                <option ng-repeat="hours in chart.select.hourses"  ng-selected="{{chart.select.hours == hours}}" value="{{hours}}">{{hours}}</option>
+                            </select>
+                        </div>
 
+                        <md-radio-group layout ng-model="chart.reference" ng-change="onChangeDateSelect()" style="margin: 0 0 0 0; font-weight: 300;font-size: 0.9em;color: #222222;">
+                            <md-radio-button value="y" class="md-primary" >Year</md-radio-button>
+                            <md-radio-button value="m" class="md-primary" style="margin-left: -8px">Month</md-radio-button>
+                            <md-radio-button value="d" class="md-primary" style="margin-left: -8px">Day</md-radio-button>
+                            <md-radio-button value="h" class="md-primary" style="margin-left: -8px">Hours</md-radio-button>
+                        </md-radio-group>
 
+                        <div class="op-width-full" style="overflow-y : hidden; overflow-x: auto;-webkit-overflow-scrolling: touch;overflow-scrolling: touch;padding : 0 10px 0 0;">
+                            <angular-chart id="_statusChart" options="chart.options" style="min-width: 480px;width: 100%;height: 100%;margin-bottom: 20px"></angular-chart>
+                        </div>
 
-
-
-
-                    <md-radio-group layout ng-model="chart.reference" ng-change="onChangeDateSelect()" style="margin: 0 0 0 0; font-weight: 300;font-size: 0.9em;color: #222222;">
-                        <md-radio-button value="y" class="md-primary" >Year</md-radio-button>
-                        <md-radio-button value="m" class="md-primary" style="margin-left: -8px">Month</md-radio-button>
-                        <md-radio-button value="d" class="md-primary" style="margin-left: -8px">Day</md-radio-button>
-                        <md-radio-button value="h" class="md-primary" style="margin-left: -8px">Hours</md-radio-button>
-                    </md-radio-group>
-
-                    <div class="op-width-full" style="overflow-y : hidden; overflow-x: auto;-webkit-overflow-scrolling: touch;overflow-scrolling: touch;padding : 0 10px 0 0;">
-                        <angular-chart id="_statusChart" options="chart.options" style="min-width: 480px;width: 100%;height: 100%;margin-bottom: 20px"></angular-chart>
-                    </div>
-
-                </md-whiteframe>
+                    </md-whiteframe>
 
                 <div class="ob-vertical-space"></div>
 

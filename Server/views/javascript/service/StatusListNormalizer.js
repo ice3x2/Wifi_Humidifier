@@ -6,6 +6,8 @@
 
 angular.module('app').service('StatusListNormalizer', function() {
 
+    var NIL_VALUE = -100;
+
     this.normalizeStatusList = function(statusList,reference,selectDate) {
         return buildNormalStatusList(statusList,reference,selectDate);
     }
@@ -29,6 +31,8 @@ angular.module('app').service('StatusListNormalizer', function() {
                 dummy.time = times.current;
                 list.push(_.clone(dummy));
             } else {
+                statusList[idx].humidity = (statusList[idx].humidity <= NIL_VALUE)?undefined:statusList[idx].humidity;
+                statusList[idx].temperature = (statusList[idx].temperature <= NIL_VALUE)?undefined:statusList[idx].temperature;
                 list.push(statusList[idx]);
                 ++idx;
             }

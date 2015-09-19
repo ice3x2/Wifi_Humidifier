@@ -78,10 +78,18 @@ var ControlValueStore = function () {
         return _this;
     };
 
+    this.getPower = function() {
+        return _controlValue.power;
+    };
+
     this.setFan = function(value) {
         if(_.isUndefined(value)) return;
         _controlValue.fan = (value > 100)?100:value;
         return _this;
+    };
+
+    this.getFan = function() {
+        return _controlValue.fan;
     };
 
     this.commitControlValue = function() {

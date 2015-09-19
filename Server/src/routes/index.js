@@ -90,7 +90,7 @@ router.get("/data", function(req, res, next) {
 
     if (temperature != undefined && humidity != undefined && water != undefined) {
       dataStore.putHumidity(humidity / 10).putTemperature(temperature / 10).putWater(water);
-      dataStore.putFanPWM(controlValues.getFanPWM()).putPowerPWM(controlValues.getPowerPWM());
+      dataStore.putFan(controlValues.getFan()).putPower(controlValues.getPower());
       dataStore.commitData();
     }
 
