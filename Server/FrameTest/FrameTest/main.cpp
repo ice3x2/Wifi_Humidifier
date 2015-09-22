@@ -8,12 +8,13 @@
 
 #include <iostream>
 #include "ESPResponseChecker.h"
-#include "Controller.h"
-
+#include "ESPTTP.h"
 using namespace std;
 typedef bool boolean;
 typedef unsigned char byte;
 typedef unsigned char uint8_t;
+
+ESPTTP espttp;
 
 void test2();
 string arrayPrint(byte* array, int len);
@@ -22,64 +23,47 @@ long millis() {
     return (long)time(NULL) * 1000;
 }
 
+string _bf = "+IPD,160:startReceive\r\nHTTP/1.1 200 OK
+Content-Type: text/html; charset=utf-8
+Content-Length: 25
+ETag: W/"19-tkOyebZP8Q5q5b+w/ScOKg"
+Connection: close
 
-#include <sys/socket.h>
-#include <sys/stat.h>
-#include <arpa/inet.h>
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include <time.h>
+*72*79*71.5*255*255******
+OK
+1
 
 
-#define BUF_LEN 128
-uint8_t buf[BUF_LEN+1];
-uint8_t ctrlbuf[BUF_LEN+1];
-int sockfd;
-Controller ctrl(ctrlbuf,BUF_LEN+1) ;
-void write(uint8_t* buffer, uint8_t len) {
-    write(sockfd, buffer, len);
-}
+OK
+Unlink
 
-int t = 0;
-int h = 0;
-int w = 0;
-void onThValue( THValue* const th) {
-    th->temperature = t++;
-    th->humidity = th->temperature * 2;
-}
 
-void onChangedControlValue(const ControlValues* const value) {
-    cout << (int)value->minTemperature << '\n' << (int)value->minHumidity << '\n' <<(int) value->maxHumidity << '\n'
-    <<(int) value->powerPWM << '\n' << (int)value->fanPWM << endl;
-}
-
-bool onWaterState() {
-    return w++ % 5 == 0;
-}
-
-class StringDeque {
-private:
-    uint8_t _capacity;
-    
-};
+/*"d : Ready..\r\ntrue\r\ntrue\r\n\r\nload offset : 71\r\n104\r\n104\r\nd : version - 104\r\nd : version2 - \r\n104\r\nd : mode - 2\r\nd : ssid - beom\r\nd : pass - taste\r\nd : serverAddr - 192.168.0.12\r\nd : key - beom\r\nd : \r\nport - 8080\r\nintoRunMode\r\nAT+RST\r\nbusy p...\r\nOK\r\nAT+CWMODE=1\r\nno change\r\nd : : no change res checked.\r\nAT+CIPMUX=0\r\nOK\r\nd : : \nALREADY CONNECT res checked.\r\nAT+CIPSERVER=0\r\nERROR\r\nd : : ERROR res check.\r\nAT+CWJAP=beom,taste\"\r\nOK\r\nd : : OK res checked.\r\nAT+CIFSR\r\n\r\n\r\n192.168.0.48\r\n\r\nOK\r\nd : : OK res checked.\r\n455\r\n\r\nAT+CIPSTART=\"TCP\",\"192.168.0.12\",8080\r\nAT+CIPSTART=\"TCP\",\"192.168.0.12\",8080\r\nOK\r\nLinked\r\nconnected\r\n+IPD,4,160:HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nUnlink10\r\nAT\r\n";
+*/
 
 int main(int argc, const char * argv[]) {
-    
-    
-    
-    /*for(int i = 0,n  = sizeof(_buffer); i < n; ++i){
-        uint8_t rs = resChecker.putCharAndCheck(_buffer[i]);
+ 
+    const char* _buffer = _bf.c_str();
+    cout << _bf.size() << endl;
+    ESPResponseChecker resChecker;
+    for(int i = 0,n  = _bf.size(); i < n; ++i){
+        uint16_t rs = resChecker.putCharAndCheck(_buffer[i]);
         
         if(rs == RES_IPD) {
-            cout << "\n" << (int)rs << endl;
-            cout << "\n" << (int)resChecker.getPidID() << endl;
-            cout << "\n" << (int)resChecker.getPidDataLength() << endl;
+            cout << "IPD\n";
+            cout << "\nValue : " << (int)rs << endl;
+            cout << "\nID : " << (int)resChecker.getIpdID() << endl;
+            cout << "\nLength : " << (int)resChecker.getIpdDataLength() << endl;
         } else if (rs > 0){
             cout << (int)rs << endl;
         }
 
-    }*/
+    }
+    
+    espttp.requestIPAddress();
+    espttp.next(0);
+    
+    cout << ((512 & 512) == 512);
 
     //cout << string(HTML_SETUP_STR).length() << endl;
     

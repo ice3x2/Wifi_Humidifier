@@ -25,6 +25,7 @@
     "rx": "^3.1.2",
     "serve-favicon": "~2.3.0",
     "simple-node-db": "^0.90.37",
+    "siphash": "^1.0.1",
     "yargs": "^3.25.0"
   }
 }

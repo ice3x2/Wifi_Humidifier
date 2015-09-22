@@ -1,10 +1,14 @@
 #include <SoftwareSerial.h>
 #include <EEPROM.h>
 #include <DHT22.h>
+
 #include <PWM.h>
+#include <MemoryFree.h>
+
+//https://github.com/toruuetani/Cryptosuite
 
 #include "EspResponseChecker.h"
-#include "Controller.h"
+#include "ESP8266.h"
 
 #define WIFI_RX 2
 #define WIFI_TX 3
@@ -12,25 +16,26 @@
 #define FAN_CTR 9
 #define PW_CTR 10
 
-#define LED_PIN 12
+#define LED_PIN 13
 #define RESET_PIN 0
 #define DHT22_PIN 7
 #define WATERGAUGE_READ_ANPIN 2
 #define POWER_READ_ANPIN 1
 
-#define BUFF_SIZE 128
+#define BUFF_SIZE 64
 #define DEBUG
 
-#define VER 104
+#define VALUE_NIL -1000
+
+#define VER 105 
 #define MODE_SETUP 1
 #define MODE_RUN 2
 #define MODE_ERROR 3
 
 #define DELAY_PUSH_SETUP 5000
-
-#define DELAY_LED_WAIT 1500
-#define DELAY_LED_SETUP 500
-#define DELAY_LED_ERROR 50
+#define DELAY_LED_SETUP 1000
+#define DELAY_LED_ERROR_CONNECT 200
+#define DELAY_LED_FAIL_AP 40
 
 // 제어 값을 담고 있는 _controlValues 배열의 각 인덱스가 의미하는 값을 정의.
 #define CONTROL_VALUE_MIN_HUMIDITY 0
@@ -42,22 +47,392 @@
 
 
 #define STATE_PUSH_BUTTON 1
-#define STATE_ON_SEND_STATUS 1 << 1
-#define STATE_ON_SEND_ERROR 1 << 2
-
+#define STATE_INTO_SETUP_MODE 1 << 2
+#define STATE_SETUP_MODE 1 << 3
+#define STATE_FAIL_AP 1 << 4
+#define STATE_ERROR_CONNECT 1 << 5
+#define STATE_RUN 1 << 6
+#define STATE_INCREASE_HUMIDITY 1 << 7
 
 typedef struct Config {
   uint8_t version = VER;
-  uint8_t mode = MODE_SETUP;
-  char ssid[16] = "unknown";
-  char pass[16] = "unknown";
-  char serverAddr[24] = "unknown";
-  char key[8] = "unknown";
   uint32_t port = 80;
   uint8_t tailVersion = VER;
+  String ssid;
+  String pass;
+  String server;
+  String key;
 } CONFIG;
 
+typedef struct Values {
+  int temperature;
+  int humidity;
+  int minHumidity;
+  int maxHumidity;
+  int limitDiscomfort;
+  uint8_t fan;
+  uint8_t power;
+  
+} VALUES;
 
+
+SoftwareSerial _wifi(WIFI_RX, WIFI_TX);
+ESPTTP _espttp;
+CONFIG _config;
+VALUES _values;
+DHT22 _dht22(DHT22_PIN);
+long _lastClickMillis = 0;
+long _lastOnLedMillis = 0;
+long _lastReadDHT22 = 0;
+uint8_t _latestFanPWM = 255;
+uint8_t _latestPowerPWM = 255;
+uint8_t _buffer[BUFF_SIZE];
+uint8_t _bufferIdx = 0;
+uint8_t _tokenPosition = 0;
+uint16_t _state;
+bool _isInit = false; 
+
+void onResponse(Event*);
+
+void setup() {
+  pinMode(LED_PIN, OUTPUT);
+  digitalWrite(LED_PIN, HIGH);
+  Serial.begin(115200);
+  Serial.print("ready...");
+  
+
+  //InitTimersSafe();
+  Serial.println((SetPinFrequencySafe(FAN_CTR, 2500))?"true":"false");
+  Serial.println(SetPinFrequencySafe(PW_CTR, 20000)?"true":"false");
+  pwmWrite(FAN_CTR,255);
+  pwmWrite(PW_CTR,255);
+  _wifi.begin(9600);
+  _espttp.begin(&_wifi);
+  _espttp.setOnResponseCallback(onResponse);
+  Options* opt = _espttp.obtainOptions();
+  if(!loadConfig()) {
+    opt->apMode = true;    
+  } else {
+    opt->apMode = false;
+    opt->port = 80;
+    opt->ssid = _config.ssid;
+    opt->password = _config.pass;
+    addState(STATE_RUN);
+  }
+  _espttp.commitOption();
+  while(_espttp.isBusy()) {
+    _espttp.next(millis());
+  }
+  digitalWrite(LED_PIN, LOW);
+}
+
+
+void loop() {
+  
+  showStatusLed();
+  checkResetButton();
+  if(readStatus() && isState(STATE_RUN)) {
+      _tokenPosition = 0;
+      int pw = (analogRead(WATERGAUGE_READ_ANPIN) > 200)?0:-1;
+      pw = (analogRead(POWER_READ_ANPIN) > 200)?1:pw;  
+      String strGetPath =  "/data?key=";
+      strGetPath += _config.key;
+      strGetPath += "&t=";
+      strGetPath += _values.temperature;
+      strGetPath += "&h=";
+      strGetPath += _values.humidity;
+      strGetPath += "&w=";
+      strGetPath += pw;
+      _espttp.beginConnect()->serverAddress(_config.server)->port(_config.port)->path(strGetPath)->emit();  
+  }
+  if(isState(STATE_INTO_SETUP_MODE) && !_espttp.isBusy()) {
+     removeState(STATE_RUN);
+     _espttp.cancel();
+     Options* opt = _espttp.obtainOptions();
+     opt->apMode = true;
+     _espttp.commitOption();
+     addState(STATE_SETUP_MODE);
+     removeState(STATE_INTO_SETUP_MODE);
+  }
+  _espttp.next(millis());
+}
+
+
+void onResponse(Event* event) {
+  if(event->type == Event::FAIL) {
+     addState(STATE_ERROR_CONNECT);
+     Serial.println("\n----Error");
+  }
+  if(event->type == Event::FAIL_JOIN_AP) {
+     _espttp.cancel();
+     _state = 0;
+     addState(STATE_FAIL_AP);
+  }
+  else if(event->type == Event::CONTENT) {
+    //Serial.print(*event->data);
+    char data = *event->data;
+    if (data == ',') {              
+      if (_tokenPosition == 1)  // 최소 동작 습도
+        _values.minHumidity = atoi((const char *)_buffer);
+      if (_tokenPosition == 2) // 최대 습도.
+        _values.maxHumidity = atoi((const char *)_buffer);
+      if (_tokenPosition == 3)  // 제한 불쾌지수 값
+        _values.limitDiscomfort = atoi((const char *)_buffer);  
+      if (_tokenPosition == 4)  // power pwm
+        _values.power = atoi((const char *)_buffer);
+      if (_tokenPosition == 5) // fan pwm
+        _values.fan = atoi((const char *)_buffer);
+      _tokenPosition++;
+      resetBuffer();
+    } else {
+      _buffer[_bufferIdx++ % BUFF_SIZE] = data;
+    }
+  } else if(event->type == Event::GET) {
+    Serial.print("minHumidity : ");
+    Serial.println(_values.minHumidity);
+    Serial.print("maxHumidity : ");
+    Serial.println(_values.maxHumidity);
+    Serial.print("limitDiscomfort : ");
+    Serial.println(_values.limitDiscomfort);
+    Serial.print("power PWM : ");
+    Serial.println(_values.power);
+    Serial.print("fan PWM : ");
+    Serial.println(_values.fan);
+    removeState(STATE_ERROR_CONNECT);
+    control();
+  }
+  else if(event->type == Event::PATH) {
+    Serial.print(*event->data);
+    char data = *event->data;
+    if (data == '/') {              
+      if (_tokenPosition == 1)  // ssid
+        _config.ssid = (const char *)_buffer;
+      if (_tokenPosition == 2) // ssid password
+        _config.pass = (const char *)_buffer;
+      if (_tokenPosition == 3)  // server address
+        _config.server = (const char *)_buffer;  
+      if (_tokenPosition == 4)  // server port 
+        _config.port = atoi((const char *)_buffer);
+      if (_tokenPosition == 5) // auth key
+        _config.key = (const char *)_buffer;
+      _tokenPosition++;
+      resetBuffer();
+    } else {
+      _buffer[_bufferIdx++ % BUFF_SIZE] = data;
+    }
+  }
+  if(event->type == Event::REQ) {
+    if(_tokenPosition > 5) {
+      saveConfig();
+      _espttp.beginConnect()->body("<!DOCTYPE html><head> <meta name='viewport' content='width=device-width, user-scalable=no'></head><body>Setup OK.<br/>Please reboot.<br/></body></html>")->emit();
+    }
+    else {
+      _espttp.beginConnect()->body("<!DOCTYPE html><head> <meta name='viewport' content='width=device-width, user-scalable=no'></head><body>URL input for setup.</br>http://192.168.4.1/[AP SSID]/[Password]/[server addr]/[port]/[key]/</body></html>")->emit();
+    }
+    _tokenPosition = 0;
+    _bufferIdx = 0;
+  }
+ 
+}
+
+bool isState(uint16_t state) {
+  return state == (_state & state);
+}
+void addState(uint16_t state) {
+  _state = (_state | state);
+}
+void removeState(uint16_t state) {
+  _state &= ~state;
+}
+
+
+void showStatusLed() {
+  int delayMillis = 0;
+  if (isState(STATE_SETUP_MODE)) {
+    delayMillis = DELAY_LED_SETUP;
+  } else if (isState(STATE_ERROR_CONNECT)) {
+    delayMillis = DELAY_LED_ERROR_CONNECT;
+  } else if (isState(STATE_FAIL_AP)) {
+    delayMillis = DELAY_LED_FAIL_AP;
+  } else if (isState(STATE_RUN)) {
+    digitalWrite(LED_PIN, LOW);
+    return;
+  }
+  if (millis() - _lastOnLedMillis < delayMillis) {
+    digitalWrite(LED_PIN, HIGH);
+  } else if (millis() - _lastOnLedMillis < (delayMillis + delayMillis))  {
+    digitalWrite(LED_PIN, LOW);
+  } else if (millis() - _lastOnLedMillis > (delayMillis + delayMillis))  {
+    _lastOnLedMillis = millis();
+    digitalWrite(LED_PIN, HIGH);
+  }
+}
+
+
+void checkResetButton() {
+  if (analogRead(RESET_PIN) > 1000 && !isState(STATE_INTO_SETUP_MODE) && !isState(STATE_SETUP_MODE) ) {
+    if (!isState(STATE_PUSH_BUTTON)) {
+      addState(STATE_PUSH_BUTTON);
+      _lastClickMillis = millis();
+    } else if (millis() - _lastClickMillis > DELAY_PUSH_SETUP) {
+      addState(STATE_INTO_SETUP_MODE);
+    }
+  } else if(analogRead(RESET_PIN) < 1000) {
+    removeState(STATE_INTO_SETUP_MODE);
+    removeState(STATE_PUSH_BUTTON);
+    _lastClickMillis = 0;
+  }
+}
+
+bool loadConfig() {
+  int offset = 0;
+  char data;
+  
+  _config.version = EEPROM.read(offset++);
+  if(_config.version != VER) {
+    _config.version = VER;
+    return false;
+  }
+  
+  
+  resetBuffer();
+  while((data = EEPROM.read(offset++)) != '\0') {
+    _buffer[_bufferIdx++] = data;
+  }
+  _config.ssid = (const char*)_buffer;
+
+  resetBuffer();
+  while((data = EEPROM.read(offset++)) != '\0') {
+    _buffer[_bufferIdx++] = data;
+  }
+  _config.pass = (const char*)_buffer;
+
+  resetBuffer();
+  while((data = EEPROM.read(offset++)) != '\0') {
+    _buffer[_bufferIdx++] = data;
+  }
+  _config.server = (const char*)_buffer;
+
+  resetBuffer();
+  while((data = EEPROM.read(offset++)) != '\0') {
+     _buffer[_bufferIdx++] = data;
+  }
+  _config.key = (const char*)_buffer;
+    
+
+  uint8_t port[4];
+  port[0] = EEPROM.read(offset++); 
+  port[1] = EEPROM.read(offset++);
+  port[2] = EEPROM.read(offset++);
+  port[3] = EEPROM.read(offset++);
+  _config.port =  (port[0] << 24) + (port[1] << 16) + (port[2] << 8) +  port[3];
+  _config.tailVersion = EEPROM.read(offset++);
+  //printConfig();
+  return true;
+}
+
+void saveConfig() {
+  int offset = 0;
+  EEPROM.write(offset++, _config.version);
+  
+  for (int i = 0, n = _config.ssid.length(); i < n; ++i)
+    EEPROM.write(offset++, _config.ssid.charAt(i));
+  EEPROM.write(offset++, '\0');
+  
+  for (int i = 0, n = _config.pass.length(); i < n; ++i)
+    EEPROM.write(offset++, _config.pass.charAt(i));
+  EEPROM.write(offset++, '\0');
+  
+  for (int i = 0, n = _config.server.length(); i < n; ++i)
+    EEPROM.write(offset++, _config.server.charAt(i));
+  EEPROM.write(offset++, '\0');
+  
+  for (int i = 0, n = _config.key.length(); i < n; ++i)
+    EEPROM.write(offset++, _config.key.charAt(i));
+  EEPROM.write(offset++, '\0');
+    
+  EEPROM.write(offset++, (_config.port >> 24) & 0xff);
+  EEPROM.write(offset++, (_config.port >> 16) & 0xff);
+  EEPROM.write(offset++, (_config.port >> 8) & 0xff);
+  EEPROM.write(offset++, (_config.port >> 0) & 0xff);
+
+  EEPROM.write(offset++, _config.tailVersion);
+  //printConfig();
+}
+
+void resetBuffer() {
+  _bufferIdx = 0;
+  for (int i = BUFF_SIZE; i--;) {
+    _buffer[i] = 0;
+  }
+}
+
+bool readStatus() {
+  if(millis() - _lastReadDHT22 < 2000) return false;
+  _lastReadDHT22 = millis();
+  DHT22_ERROR_t errorCode = _dht22.readData();
+  if (errorCode == DHT_ERROR_NONE) {
+    _values.temperature = _dht22.getTemperatureCInt();
+    _values.humidity = _dht22.getHumidityInt();
+  } else {
+    _values.temperature = VALUE_NIL;
+    _values.humidity = VALUE_NIL;
+  }
+  return true;
+}
+
+void control() {
+  bool isLimitDiscomfort = calcDiscomfortIndex(_values.temperature / 10.0f, _values.humidity / 10.0f) * 10 > _values.limitDiscomfort;
+  uint8_t power;
+  uint8_t fan;
+  if(_values.humidity >= _values.maxHumidity * 10 || isLimitDiscomfort) {
+      if(!isLimitDiscomfort) {
+        removeState(STATE_INCREASE_HUMIDITY);  
+      }
+      power = 0;
+      fan = 0; 
+  } else if(_values.humidity < _values.minHumidity * 10 || isState(STATE_INCREASE_HUMIDITY)) {
+      addState(STATE_INCREASE_HUMIDITY);
+      power = _values.power;
+      fan = _values.fan;
+  } 
+
+  
+  if(_latestPowerPWM != power) {
+    pwmWrite(PW_CTR, power);   
+    _latestPowerPWM = power;
+  }  
+  if(_latestFanPWM != fan) {
+    pwmWrite(FAN_CTR, fan); 
+    _latestFanPWM = fan;
+  }  
+  
+} 
+
+// 온도와 습도를 입력받아 불쾌지수를 계산하여 반환한다.
+// 불쾌지수에 대한 계산법은 http://www.kma.go.kr/HELP/basic/help_01_05.jsp 이 곳에서 확인하였다.
+float calcDiscomfortIndex(float temp, float humi) {
+    return (1.8f*temp)-(0.55*(1-humi/100.0f)*(1.8f*temp-26))+32;
+}
+
+/*
+void printConfig() {
+  Serial.println("version - " + String(_config.version));
+  Serial.println("version2 - " + String(_config.tailVersion));
+  Serial.print(_config.ssid);
+  Serial.print(":");
+  Serial.println(_config.pass);
+  Serial.print(_config.server);
+  Serial.print(":");
+  Serial.println(_config.port);
+  Serial.println(_config.key);
+  
+}*/
+
+
+
+
+/*
 uint16_t sendATCmd(const char* cmd, int timeout = 0, uint8_t* buffer = NULL, int bufSize = 16);
 bool isResCheckOk(uint8_t checkResresult);
 bool checkConfig(CONFIG* config);
@@ -68,7 +443,6 @@ void setMode();
 void showStatusLed();
 void saveConfig();
 void loadConfig();
-//void flushForEsp8266Buffer();
 void printConfig(CONFIG* config);
 bool sendData(const char* data, int length, int timeout = -1, int ipdID = -1);
 bool connectServer(int timeout = -1);
@@ -80,7 +454,6 @@ void resetBuffer();
 uint8_t closeConnection(int ipdID = -1);
 
 
-// 상태값 제어 함수.
 void addState(uint16_t state);
 void removeState(uint16_t state);
 bool isState(uint16_t state);
@@ -93,6 +466,7 @@ uint8_t _bufferIdx = 0;
 uint8_t _dataState = 0;
 long _lastClickMillis = 0;
 long _lastOnLedMillis = 0;
+ESPTTP _espttp;
 DHT22 _dht22(DHT22_PIN);
 CONFIG _config;
 THValue _thValue;
@@ -157,10 +531,6 @@ void loop() {
   
 
 
-
-  /*if(_ctrl.isConnected() && _dataState == DATA_STATE_WAIT) {
-     _ctrl.respire(millis());
-  }*/
 }
 
 void sendResponseOnSetupMode() {
@@ -347,15 +717,7 @@ bool sendStatusData() {
   return true;
   
 }
-void addState(uint16_t state) {
-  _state = _state | state;
-}
-void removeState(uint16_t state) {
-  _state &= ~state;
-}
-bool isState(uint16_t state) {
-  return state == _state & state ;
-}
+
 
 
 bool sendData(const char* data, int length, int timeout, int ipdID) {
@@ -374,7 +736,7 @@ bool sendData(const char* data, int length, int timeout, int ipdID) {
   // AT+CIPSEND 명령 전송 에이후 '>' 문자가 출력되기를 기다린다.
   while(millis() - startMillis < timeout || timeout < 1) {
     if(wifi.available()) {
-       uint8_t data = wifi.read();
+       uint8_t data = wifi.read();ss
        isTimeout = false; 
        break;
     }
@@ -407,10 +769,6 @@ bool sendData(const char* data, int length, int timeout, int ipdID) {
 
 
 
-
-/**
- * Buffer 에 있는 내용을 모두 0으로 채운다. memset 함수가 종종 이상하게 동작하여 느러도 이 것으로 대체.
- */
 void resetBuffer() {
   _bufferIdx = 0;
   for (int i = BUFF_SIZE; i--;) {
@@ -419,27 +777,6 @@ void resetBuffer() {
 }
 
 
-void showStatusLed() {
-  int delayMillis = 0;
-  if (_config.mode == MODE_SETUP) {
-    delayMillis = DELAY_LED_SETUP;
-  }
-  else if (_config.mode == MODE_RUN) {
-    digitalWrite(LED_PIN, LOW);
-    return;
-  }
-  else if (_config.mode == MODE_ERROR) {
-    delayMillis = DELAY_LED_ERROR;
-  }
-  if (millis() - _lastOnLedMillis < delayMillis) {
-    digitalWrite(LED_PIN, HIGH);
-  } else if (millis() - _lastOnLedMillis < (delayMillis + delayMillis))  {
-    digitalWrite(LED_PIN, LOW);
-  } else if (millis() - _lastOnLedMillis > (delayMillis + delayMillis))  {
-    _lastOnLedMillis = millis();
-    digitalWrite(LED_PIN, HIGH);
-  }
-}
 void setMode() {
   if (_config.mode == MODE_SETUP) {
     intoSetupMode();
@@ -459,8 +796,7 @@ void intoSetupMode(bool force) {
 bool intoRunMode() {
   Serial.println("intoRunMode");
   _config.mode = MODE_RUN;
-  //saveConfig();
-  //sendATCmd("AT+RST\r\n", 2000);
+  
   sendATCmd("AT+RST\r\n", 2000);
   sendATCmd("AT+CWMODE=1\r\n");
   sendATCmd("AT+CIPMUX=0\r\n");
@@ -477,7 +813,7 @@ bool resetRunMode() {
 
 bool checkAP() {
   resetBuffer();
-  // IP 주소를 가져와서 AP 와 연결이 끊겼다면 재접속 한다.
+  
   sendATCmd("AT+CIFSR\r\n", 2000, _buffer, BUFF_SIZE); 
   if(String((char*)_buffer).indexOf("0.0") >= 0) {
     return connectAP();  
@@ -563,62 +899,6 @@ bool equalResType(uint8_t refResLen, uint8_t targetResLen) {
 
 
 
-void loadConfig() {
-  int offset = 0;
-  _config.version = EEPROM.read(offset++);
-  EEPROM.read(offset++);
-  _config.mode = 2;//
-  for (int i = 0, n = sizeof(_config.ssid); i < n; ++i)
-    _config.ssid[i] = EEPROM.read(offset++);
-
-  for (int i = 0, n = sizeof(_config.pass); i < n; ++i)
-    _config.pass[i] = EEPROM.read(offset++);
-
-  for (int i = 0, n = sizeof(_config.serverAddr); i < n; ++i)
-    _config.serverAddr[i] = EEPROM.read(offset++);
-
-  for (int i = 0, n = sizeof(_config.key); i < n; ++i)
-    _config.key[i] = EEPROM.read(offset++);
-
-  uint8_t port[4];
-  port[0] = EEPROM.read(offset++); 
-  port[1] = EEPROM.read(offset++);
-  port[2] = EEPROM.read(offset++);
-  port[3] = EEPROM.read(offset++);
-  _config.port =  (port[0] << 24) + (port[1] << 16) + (port[2] << 8) +  port[3];
-  _config.tailVersion = EEPROM.read(offset++);
-  Serial.print("load offset : ");
-  Serial.println(offset);
-}
-
-
-void saveConfig() {
-  int offset = 0;
-  EEPROM.write(offset++, _config.version);
-  EEPROM.write(offset++, _config.mode);
-  for (int i = 0, n = sizeof(_config.ssid); i < n; ++i)
-    EEPROM.write(offset++, _config.ssid[i]);
-
-  for (int i = 0, n = sizeof(_config.pass); i < n; ++i)
-    EEPROM.write(offset++, _config.pass[i]);
-
-  for (int i = 0, n = sizeof(_config.serverAddr); i < n; ++i)
-    EEPROM.write(offset++, _config.serverAddr[i]);
-
-  for (int i = 0, n = sizeof(_config.key); i < n; ++i)
-    EEPROM.write(offset++, _config.key[i]);
-
-    
-  EEPROM.write(offset++, (_config.port >> 24) & 0xff);
-  EEPROM.write(offset++, (_config.port >> 16) & 0xff);
-  EEPROM.write(offset++, (_config.port >> 8) & 0xff);
-  EEPROM.write(offset++, (_config.port >> 0) & 0xff);
-
-  EEPROM.write(offset++, _config.tailVersion);
-  Serial.print("save offset : ");
-  Serial.println(offset);
-}
-
 
 
 bool checkConfig(CONFIG* config) {
@@ -641,18 +921,7 @@ void printConfig(CONFIG* config) {
 long _lastReadDUT22 = 0;
 
 void readTHVlaue() {
-  if(millis() - _lastReadDUT22  < 3000) return;
-  _lastReadDUT22 = millis();
-  DHT22_ERROR_t errorCode = _dht22.readData();
-  if (errorCode == DHT_ERROR_NONE || errorCode  == DHT_ERROR_CHECKSUM) {
-    _thValue.temperature = _dht22.getTemperatureC() * 10;
-    _thValue.humidity = _dht22.getHumidity() * 10;
-    Serial.println(_thValue.humidity);
-  } else {
-    // 에러.
-    _thValue.humidity = NIL_VALUE;
-    _thValue.humidity = NIL_VALUE;
-  }
+  
 }
 
 uint8_t latestFanPWM = 0;
@@ -675,3 +944,5 @@ void onPWMControlCallback(uint8_t powerPWM, uint8_t fanPWM) {
 bool onWaterStateCallback() {
   return analogRead(WATERGAUGE_READ_ANPIN) < 200;
 }   
+
+*/

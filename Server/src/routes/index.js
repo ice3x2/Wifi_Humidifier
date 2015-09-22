@@ -76,33 +76,35 @@ router.get("/data", function(req, res, next) {
     var humidity = req.query.h;
     var water = req.query.w;
 
-    result = '*' + controlValues.getMinHumidity() +
-             '*' + controlValues.getMaxHumidity() +
-             '*' + controlValues.getThresholdDiscomfort() +
-             '*' + controlValues.getPowerPWM() +
-             '*' + controlValues.getFanPWM() +
-             '******';
+    result = ',' + controlValues.getMinHumidity() +
+             ',' + controlValues.getMaxHumidity() +
+             ',' + (controlValues.getThresholdDiscomfort()  * 10) +
+             ',' + controlValues.getPowerPWM() +
+             ',' + controlValues.getFanPWM() +
+             ',,,,,';
 
 
-    log.i(req.query);
+    log.v(JSON.stringify(req.query));
 
 
 
-    if (temperature != undefined && humidity != undefined && water != undefined) {
+    if (temperature > -100 && humidity > -100 &&
+        temperature != undefined && humidity != undefined && water != undefined) {
       dataStore.putHumidity(humidity / 10).putTemperature(temperature / 10).putWater(water);
       dataStore.putFan(controlValues.getFan()).putPower(controlValues.getPower());
       dataStore.commitData();
     }
 
-    setTimeout(function () {
+    console.log("send");
+    log.i(result);
+    res.send(result);
+    /*setTimeout(function () {
       try {
-        console.log("send");
-        log.i(result);
-        res.send(result);
+
       } catch (err) {
       }
       ;
-    }, 500);
+    }, 8500);*/
 
 });
 
