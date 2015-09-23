@@ -13,7 +13,7 @@ const PWM_MAX_POWER = 255;
 const PWM_MIN_FAN = 2;
 const PWM_MAX_FAN = 255;
 
-const CHECK_DELAY_LIMIT = 30000;
+const CHECK_DELAY_LIMIT = 60000;
 
 var ControlValueStore = function () {
     var _controlValue =  {
