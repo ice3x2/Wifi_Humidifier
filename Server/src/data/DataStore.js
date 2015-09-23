@@ -4,7 +4,9 @@
 
 var SimpleDb = require('simple-node-db');
 var persist = require('node-persist');
+var path = require('path');
 var log = include('ColorLog');
+
 
 const KEY_UPDATE_INFO = "KEY_UPDATE_INFO";
 
@@ -24,7 +26,10 @@ var DBController = function() {
     };
 
     var _realTimeDatas = [];
-    var _db = new SimpleDb('../../data_base');
+    var dir = path.join(path.resolve(__properties.database), 'persist') + '';
+
+    log.d("load data_base : " +path.resolve(__properties.database));
+    var _db = new SimpleDb(path.resolve(__properties.database));
     var _data = new DataModel();
     var _offsetWrap = {
         offset : 0
@@ -35,7 +40,9 @@ var DBController = function() {
     var _this = this;
 
 
-    persist.initSync();
+    persist.initSync({
+        dir: dir
+    });
     var loadedUpdateInfo = persist.getItem(KEY_UPDATE_INFO);
     if(loadedUpdateInfo == undefined || loadedUpdateInfo.lastUpdateMs == undefined) {
         _updateInfo.lastUpdateMs = Date.now();
@@ -257,7 +264,9 @@ var DBController = function() {
     }
 
     function updateData(data) {
-         persist.initSync();
+        persist.initSync({
+            dir: dir
+        });
         _updateInfo =  persist.getItem(KEY_UPDATE_INFO);
         var currentMs = Date.now();
         _realTimeDatas.push(data);

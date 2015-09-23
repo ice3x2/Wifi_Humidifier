@@ -5,7 +5,6 @@
  */
 require('../import').init('./src',['(.+)test/','(.+)node_modules/','(.+)views/','(.+)gulp/']);
 var properties = require ("properties");
-var app = require('../app');
 var debug = require('debug')('Server:server');
 var http = require('http');
 global._ = require('lodash');
@@ -27,13 +26,14 @@ properties.parse (".properties", options, function (error, obj){
   console.log (obj);
   global.__properties = obj;
   global.__rootPath = require('path').resolve('./') + "";
-
+  console.log('Properties : ' + JSON.stringify(__properties));
 
   startWebServer();
 });
 
 
 function startWebServer() {
+  var app = require('../app');
   /**
    * Get port from environment and store in Express.
    */

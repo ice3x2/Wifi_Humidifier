@@ -9,6 +9,7 @@ var gulp = require('gulp');
 gulp.task('run', ['demon:server', 'watch:html', 'watch:css','watch:js','watch:img']);
 
 
+
 fs.readdirSync(__dirname + '/gulp').forEach(function(task) {
    console.log("load gulp : " +  task);
    require('./gulp/' + task);

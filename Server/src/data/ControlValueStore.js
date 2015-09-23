@@ -5,7 +5,7 @@
 
 var persist = require('node-persist');
 var log = include('ColorLog');
-
+var path = require('path');
 
 const KEY_CONTROL_VALUE = "KEY_CONTROL_VALUE";
 const PWM_MIN_POWER = 120;
@@ -21,9 +21,12 @@ var ControlValueStore = function () {
         power : 100,
         fan : 100
     };
+    var dir = path.join(path.resolve(__properties.database), 'persist') + '';
     var _this = this;
 
-    persist.initSync();
+    persist.initSync({
+        dir : dir
+    });
     log.i("ControlValueStore::load file");
     var loadedControlValue = persist.getItem(KEY_CONTROL_VALUE);
     log.v(JSON.stringify(_controlValue));
@@ -93,7 +96,9 @@ var ControlValueStore = function () {
     };
 
     this.commitControlValue = function() {
-        persist.initSync();
+        persist.initSync({
+            dir: dir
+        });
         persist.setItem(KEY_CONTROL_VALUE,_controlValue);
         log.i("ControlValueStore::commit()")
         log.v(JSON.stringify(_controlValue));
