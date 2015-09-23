@@ -282,6 +282,7 @@ var DBController = function() {
         persist.setItem(KEY_UPDATE_INFO,_updateInfo);
     }
 
+    
     function insertData(data) {
         var key = _db.createDomainKey(KEY_DATA, appendZero(data.time));
         var funcThis = this;

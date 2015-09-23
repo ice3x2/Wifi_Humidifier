@@ -3,10 +3,10 @@
     <div class="op-width-full _titleBox" style="position: absolute;top: 5%;left: 5%;font-weight: 200;font-size: 14pt;color: #666666;">{{title}}</div>
     <md-whiteframe class="md-whiteframe-z2 op-corner-s1 op-both-full" layout layout-align="center center" style=";font-size: 4em;overflow: hidden;background-color: white">
         <div class="_statusBox" layout layout-align="center center" style="width:100%;color: #333333;font-weight: 900;font-size: 30pt;">
-            <div class="op-both-full" ng-transclude style="position: absolute;bottom: 0;right: 0;z-index: 1;width: 100%;height: 250px"></div>
             <span ng-style="styleStatusBoxText">
             {{value}}{{unit}}
                 </span>
         </div>
+        <div class="op-both-full" ng-transclude style="position: absolute;bottom: 0;right: 0;width: 100%;height: 100%"></div>
     </md-whiteframe>
 </div>

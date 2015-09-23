@@ -6,7 +6,6 @@ var dataStore = include('DataStore');// include('DataStore');
 var log = include('ColorLog');
 
 
-// /ngStatusBox
 router.post('/list', function(req, res, next) {
 
   if(_.isEmpty(req.body)) {
@@ -58,34 +57,34 @@ router.get('/', function(req, res, next) {
 
 
 
-
-var count = 0;
 router.get("/data", function(req, res, next) {
 
-    //res.removeHeader('Transfer-Encoding');
-    console.log("data! : ", ++count);
     res.removeHeader('X-Powered-By');
     res.removeHeader('Transfer-Encoding');
     res.removeHeader('Date');
     if (req.path != null) {
       console.log(req.path);
     }
-    var result = '';
+    var result = "";
     var key = req.query.key;
     var temperature = req.query.t;
     var humidity = req.query.h;
     var water = req.query.w;
 
-    result = ',' + controlValues.getMinHumidity() +
-             ',' + controlValues.getMaxHumidity() +
-             ',' + (controlValues.getThresholdDiscomfort()  * 10) +
-             ',' + controlValues.getPowerPWM() +
-             ',' + controlValues.getFanPWM() +
-             ',,,,,';
+
+    if(key != __properties.control.key) {
+        result = "Auth fail";
+    } else {
+        result = ',' + controlValues.getMinHumidity() +
+            ',' + controlValues.getMaxHumidity() +
+            ',' + (controlValues.getThresholdDiscomfort()  * 10) +
+            ',' + controlValues.getPowerPWM() +
+            ',' + controlValues.getFanPWM() +
+            ',,,,,';
+    }
 
 
     log.v(JSON.stringify(req.query));
-
 
 
     if (temperature > -100 && humidity > -100 &&
@@ -95,17 +94,8 @@ router.get("/data", function(req, res, next) {
       dataStore.commitData();
     }
 
-    console.log("send");
     log.i(result);
     res.send(result);
-    /*setTimeout(function () {
-      try {
-
-      } catch (err) {
-      }
-      ;
-    }, 8500);*/
-
 });
 
 module.exports = router;

@@ -1,6 +1,6 @@
 
 
-var app = angular.module('app', ['ngCookies','ngAnimate', 'ngMaterial','angularChart','angular-spinkit']);
+var app = angular.module('app', ['ngCookies','ngAnimate', 'ngMaterial','angularChart','angular-spinkit','ngTouch']);
 
 
 /**Angular Material Config*/
@@ -56,22 +56,16 @@ angular.module('app').controller('MainCtrl', function($scope, $mdDialog,$mdToast
     requestStatusStartRepeat();
     requestFirstStatusUpdateTime();
     requestCtrlValue(true);
+    resizeCallbackByDelay();
 
-
+    // 로딩 디렉티브 만들기 귀찮아서 이렇게 처리함.
     setTimeout(function() {
+        $scope.isHideLoadingScene = true;
+        resizeCallbackByDelay();
         requestStatusList(new Date(),$scope.chart.reference);
-    },1000);
+    },500);
 
-    // 이런 무식하고 멍청한 방법을 쓰는 이유는 그냥 로딩 화면이 짧게 지나가면 오히려 더 이상해 보이기 때문이다.
-    var checkLoadingStatus = function() {
-        if(!_.isUndefined($scope.chart) && $scope.chart.isLoaded) {
-            $scope.isHideLoadingScene = true;
-            resizeCallbackByDelay();
-        } else {
-            setTimeout(checkLoadingStatus, 100);
-        }
-    };
-    setTimeout(checkLoadingStatus,100);
+
 
 
 
@@ -96,6 +90,7 @@ angular.module('app').controller('MainCtrl', function($scope, $mdDialog,$mdToast
         invalidDateSelect(_startDate,selectedDate);
         requestStatusList(selectedDate, $scope.chart.reference);
     };
+
 
 
     $scope.onClickHumiditySetting = function(event) {
@@ -406,7 +401,6 @@ angular.module('app').controller('MainCtrl', function($scope, $mdDialog,$mdToast
             new Date($scope.chart.select.year,$scope.chart.select.month - 1,$scope.chart.select.date,$scope.chart.select.hours));
         console.log('chart set');
         $scope.chart.isLoaded = true;
-        console.log(document);
 
         /*document.body.scrollTop = scrolled;
         setTimeout(function() {

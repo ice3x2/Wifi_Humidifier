@@ -8,7 +8,7 @@ var log = include('ColorLog');
 
 
 const KEY_CONTROL_VALUE = "KEY_CONTROL_VALUE";
-const PWM_MIN_POWER = 200;
+const PWM_MIN_POWER = 120;
 const PWM_MAX_POWER = 255;
 const PWM_MIN_FAN = 2;
 const PWM_MAX_FAN = 255;

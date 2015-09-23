@@ -64,13 +64,14 @@ label {
     .ob-toolbar {
         height: 48px;
         min-height: 48px;
+
     }
     .ob-ctrl-icon {
         position: absolute;
-        right: 0em;
-        bottom: 0em;
-        width: 24px;
-        height: 24px;
+        right: 0.1em;
+        bottom: 0.1em;
+        width: 20%;
+        height: 20%;
     }
     .ob-status {
         padding : 3px
@@ -146,5 +147,6 @@ label {
     font-weight: 200;
     color: #80CBC4;
     font-size : 12pt;
+    position: relative;
 }
 

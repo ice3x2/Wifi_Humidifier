@@ -1,4 +1,36 @@
+
+
 #include "ESPResponseChecker.h"
+
+#define RES_OK_STR "\r\nOK"
+#define RES_OK_LEN 4
+#define RES_ERROR_STR "\nERROR"
+#define RES_ERROR_LEN 6
+#define RES_NO_CHANGE_STR "no change\r\n"
+#define RES_NO_CHANGE_LEN 11
+#define RES_LINK_STR "Link\r\n"
+#define RES_LINK_LEN 6
+#define RES_UNLINK_STR "\nUnlink"
+#define RES_UNLINK_LEN 7
+#define RES_IPD_STR "\r\n+IPD,"
+#define RES_IPD_LEN 7
+#define RES_SEND_OK_STR "\r\nSEND OK"
+#define RES_SEND_OK_LEN 9
+#define RES_FAIL_STR "\r\nFAIL"
+#define RES_FAIL_LEN 6
+#define RES_AC_STR "\nALREADY CONNECT"
+#define RES_AC_LEN 16
+#define RES_RST_STR "-thinker.com]"
+#define RES_RST_LEN 13
+#define RES_NOIP_STR "\nno ip"
+#define RES_NOIP_LEN 6
+#define RES_FATAL_STR "\nbusy s..." 
+#define RES_FATAL_LEN 10
+#define RES_DNS_FAIL_STR "\nDNS Fail" 
+#define RES_DNS_FAIL_LEN 9
+#define RES_SERROR_STR "\nError"
+#define RES_SERROR_LEN 6
+
 
 void ESPResponseChecker::resetBuffer() {
     _bufferPos = 0;
@@ -11,7 +43,7 @@ void ESPResponseChecker::putChar(char ch) {
     _bufferPos %= BufferSize;
 }
 void ESPResponseChecker::resetStatus() {        
-    _cmpStatus = RES_OK | RES_ERROR |  RES_NO_CHANGE | RES_LINK | RES_UNLINK |  RES_IPD | RES_SEND_OK | RES_FAIL | RES_AC | RES_RST | RES_NOIP | RES_FATAL | RES_DNS_FAIL;
+    _cmpStatus = RES_OK | RES_ERROR | RES_SERROR |  RES_NO_CHANGE | RES_LINK | RES_UNLINK |  RES_IPD | RES_SEND_OK | RES_FAIL | RES_AC | RES_RST | RES_NOIP | RES_FATAL | RES_DNS_FAIL;
 }
 void ESPResponseChecker::removeStatus(uint16_t status) {
     _cmpStatus &= ~status;
@@ -87,6 +119,7 @@ uint16_t ESPResponseChecker::putCharAndCheck(char ch) {
         for(int i = _bufferPos + BufferSize,pos = 0, j = 0;(pos = --i % BufferSize) != _bufferPos;++j) {
             removeStatus(eqaulCharInResStr(j, _strcmpBuffer[pos], (char*)RES_OK_STR, RES_OK_LEN,RES_OK));
             removeStatus(eqaulCharInResStr(j, _strcmpBuffer[pos], (char*)RES_ERROR_STR, RES_ERROR_LEN,RES_ERROR));
+            removeStatus(eqaulCharInResStr(j, _strcmpBuffer[pos], (char*)RES_SERROR_STR, RES_SERROR_LEN,RES_SERROR));
             removeStatus(eqaulCharInResStr(j, _strcmpBuffer[pos], (char*)RES_NO_CHANGE_STR, RES_NO_CHANGE_LEN,RES_NO_CHANGE));
             removeStatus(eqaulCharInResStr(j, _strcmpBuffer[pos], (char*)RES_LINK_STR, RES_LINK_LEN,RES_LINK));
             removeStatus(eqaulCharInResStr(j, _strcmpBuffer[pos], (char*)RES_UNLINK_STR, RES_UNLINK_LEN,RES_UNLINK));
