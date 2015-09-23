@@ -42,6 +42,7 @@ var ControlValueStore = function () {
 
     this.setMinHumidity = function(value) {
         _controlValue.minHumidity = value || _controlValue.minHumidity;
+        _lastCheckMillis = 0;
         return _this;
     };
 
@@ -51,6 +52,7 @@ var ControlValueStore = function () {
 
     this.setMaxHumidity = function(value) {
         _controlValue.maxHumidity = value || _controlValue.maxHumidity;
+        _lastCheckMillis = 0;
         return _this;
     };
 
@@ -60,6 +62,7 @@ var ControlValueStore = function () {
 
     this.setThresholdDiscomfort = function(value) {
         _controlValue.thresholdDiscomfort = value || _controlValue.thresholdDiscomfort;
+        _lastCheckMillis = 0;
         return _this;
     };
 
