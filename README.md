@@ -1,4 +1,6 @@
 # Wifi_Humidifier
+![](https://raw.githubusercontent.com/ice3x2/Wifi_Humidifier/master/image/photo6.jpg)
+![](https://raw.githubusercontent.com/ice3x2/Wifi_Humidifier/master/image/photo1.JPG)
  * 데모 서버 : http://devlab.iptime.org:8080/
  
 ## Hardware
