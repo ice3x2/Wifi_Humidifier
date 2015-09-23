@@ -13,6 +13,8 @@ const PWM_MAX_POWER = 255;
 const PWM_MIN_FAN = 2;
 const PWM_MAX_FAN = 255;
 
+const CHECK_DELAY_LIMIT = 30000;
+
 var ControlValueStore = function () {
     var _controlValue =  {
         minHumidity : 20,
@@ -23,7 +25,8 @@ var ControlValueStore = function () {
     };
     var dir = path.join(path.resolve(__properties.database), 'persist') + '';
     var _this = this;
-
+    var _humidificationMode = false;
+    var _lastCheckMillis = 0;
     persist.initSync({
         dir : dir
     });
@@ -60,20 +63,33 @@ var ControlValueStore = function () {
         return _this;
     };
 
-    this.getThresholdDiscomfort = function(value) {
+    this.getThresholdDiscomfort = function() {
         return _controlValue.thresholdDiscomfort;
     };
 
+    this.isHumidificationMode = function() {
+        return _humidificationMode;
+    }
 
-    this.getPowerPWM = function() {
-        if(_controlValue.power == 0) return 0;
-        return parseInt(map(_controlValue.power,0,100,PWM_MIN_POWER,PWM_MAX_POWER));
+    this.getPWMValue = function(currentTemp, currentHumidity) {
+        var value = {};
+        var currentDiscomfortIndex = calcDiscomfortIndex(currentTemp,currentHumidity);
+        if(currentHumidity > _controlValue.maxHumidity || currentDiscomfortIndex > _controlValue.thresholdDiscomfort ) {
+            _humidificationMode = false;
+        } else if(currentHumidity <  _controlValue.minHumidity) {
+            _humidificationMode = true;
+        } else if(Date.now() - _lastCheckMillis > CHECK_DELAY_LIMIT) {
+            _humidificationMode = true;
+        }
+        value.power = _humidificationMode?getPowerPWM():0;
+        value.fan = _humidificationMode?getFanPWM():0;
+        _lastCheckMillis = Date.now();
+        return value;
     };
 
-    this.getFanPWM = function() {
-        if(_controlValue.fan == 0) return 0;
-        return parseInt(map(_controlValue.fan,0,100,PWM_MIN_FAN,PWM_MAX_FAN));
-    };
+
+
+
 
     this.setPower = function(value) {
         if(_.isUndefined(value)) return;
@@ -108,9 +124,33 @@ var ControlValueStore = function () {
         return _.cloneDeep(_controlValue);
     }
 
+    function getPowerPWM() {
+        if(_controlValue.power == 0) return 0;
+        return parseInt(map(_controlValue.power,0,100,PWM_MIN_POWER,PWM_MAX_POWER));
+    };
+
+    function getFanPWM() {
+        if(_controlValue.fan == 0) return 0;
+        return parseInt(map(_controlValue.fan,0,100,PWM_MIN_FAN,PWM_MAX_FAN));
+    };
+
     function map(x,in_min, in_max, out_min, out_max) {
         return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
     }
+
+
+
+    function calcDiscomfortIndex(temp,humi) {
+        temp = parseFloat(temp);
+        humi = parseFloat(humi);
+        return toSecondDecimalPlace((1.8*temp)-(0.55*(1-humi/100.0)*(1.8*temp-26))+32);
+    }
+
+
+    function toSecondDecimalPlace(value) {
+        return Math.floor(value * 100) / 100;
+    }
+
     return this;
 }();
 

@@ -7,6 +7,7 @@ var path = require('path');
 var router = express.Router();
 var dataStore = include('DataStore');
 var log = include('ColorLog');
+var controlValues = include('ControlValueStore');
 
 router.post('/list', function(req, res, next) {
     if(_.isEmpty(req.body)) {
@@ -39,7 +40,20 @@ router.post('/list', function(req, res, next) {
 
 router.post('/now', function(req, res, next) {
     log.i("post : " + req.path);
-    res.json(dataStore.getLatestData());
+    var data = dataStore.getLatestData();
+
+    if(data.water == -1) {
+        data.operation = 'Off';
+    } else if(data.water == 0) {
+        data.operation = 'No water';
+    }
+    else if(data.water == 1 && !controlValues.isHumidificationMode()) {
+        data.operation = 'Idle';
+    } else if(data.water == 1) {
+        data.operation = 'On';
+    }
+
+    res.json(data);
 });
 
 
@@ -47,6 +61,8 @@ router.post('/first', function(req, res, next) {
     log.i("post : " + req.path);
     res.json({time : dataStore.getFirstUpdateTime()});
 });
+
+
 
 
 

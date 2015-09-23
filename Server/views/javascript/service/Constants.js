@@ -138,7 +138,7 @@ angular.module('app').constant('COLOR_INDEX_DI',
 
 angular.module('app').constant('COLOR_INDEX_OP',
     [{
-        value : 'Water',
+        value : 'No water',
         color : '#F23D00'
     },{
         value : 'On',
@@ -146,6 +146,9 @@ angular.module('app').constant('COLOR_INDEX_OP',
     },{
         value : 'Off',
         color : '#111111',
+    },{
+        value : 'Idle',
+        color : '#13A88F',
     },{
         value : 'default',
         color : '#aaaaaa',

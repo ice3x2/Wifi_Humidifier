@@ -128,6 +128,7 @@ var DBController = function() {
         delete data['arvCount'];
         delete data['ctrlPower'];
         delete data['ctrlFan'];
+
         if(_realTimeDatas.length > 5) {
             data.connection = '3';
         } else if(_realTimeDatas.length >= 3) {
@@ -375,12 +376,7 @@ var DBController = function() {
         return dateObj;
     }
 
-    /**
-     * 불쾌지수를 구한다.
-     * @param temp 온도
-     * @param humi 습도
-     * @returns {number} 불쾌지수
-     */
+
     function calcDiscomfortIndex(temp,humi) {
         temp = parseFloat(temp);
         humi = parseFloat(humi);

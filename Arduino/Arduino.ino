@@ -85,9 +85,6 @@ typedef struct Config {
 typedef struct Values {
   int temperature; // 현재 온도.
   int humidity; // 현재 습도.
-  int minHumidity; // 최소 동작 습도 
-  int maxHumidity; // 최대 동작 습도.
-  int limitDiscomfort; // 최대 동작 불쾌지수. 만약 현재 불쾌지수가 이 값 이상일 경우 가습기 동작을 정지한다. 
   uint8_t fan; // fan pwm 값.
   uint8_t power; // power pwm 값. 
 } VALUES;
@@ -188,7 +185,7 @@ void sendData() {
   _tokenPosition = 0;
   int pw = (analogRead(WATERGAUGE_READ_ANPIN) > 200) ? 0 : -1;
   pw = (analogRead(POWER_READ_ANPIN) > 200) ? 1 : pw;
-  String strGetPath =  "/data?key=";
+  String strGetPath =  "/ctrl/data?key=";
   strGetPath += _config.key;
   strGetPath += "&t=";
   strGetPath += _values.temperature;
@@ -282,15 +279,9 @@ void parseSetupPath(char data) {
  */
 void parseControlData(char data) {
   if (data == ',') {
-    if (_tokenPosition == 1)  // 최소 동작 습도
-      _values.minHumidity = atoi((const char *)_buffer);
-    if (_tokenPosition == 2) // 최대 습도.
-      _values.maxHumidity = atoi((const char *)_buffer);
-    if (_tokenPosition == 3)  // 제한 불쾌지수 값
-      _values.limitDiscomfort = atoi((const char *)_buffer);
-    if (_tokenPosition == 4)  // power pwm
+    if (_tokenPosition == 1)  // power pwm
       _values.power = atoi((const char *)_buffer);
-    if (_tokenPosition == 5) // fan pwm
+    if (_tokenPosition == 2) // fan pwm
       _values.fan = atoi((const char *)_buffer);
     _tokenPosition++;
     resetBuffer();
@@ -464,36 +455,22 @@ bool readStatusFromDHT22() {
 
 
 void control() {
-  bool isLimitDiscomfort = calcDiscomfortIndex(_values.temperature / 10.0f, _values.humidity / 10.0f) * 10 > _values.limitDiscomfort;
   uint8_t power = _values.power;
   uint8_t fan = _values.fan;
-  if (_values.humidity < _values.minHumidity * 10) {
-    _isIncreaseHumidity = true;
-  } else if (_values.humidity >= _values.maxHumidity * 10 || isLimitDiscomfort) {
-    _isIncreaseHumidity = false;
-    _latestPowerPWM = 0;
-    _latestFanPWM = 0;
+  Serial.println();
+  Serial.print("power : ");
+  Serial.println(power);
+  Serial.print("fan : ");
+  Serial.println(fan);
+  if (_latestPowerPWM != power) {
+    pwmWrite(PW_CTR, power);
+    _latestPowerPWM = power;
   }
-  if(_isIncreaseHumidity) { 
-    if (_latestPowerPWM != power) {
-      pwmWrite(PW_CTR, power);
-      _latestPowerPWM = power;
-    }
-    if (_latestFanPWM != fan) {
-      pwmWrite(FAN_CTR, fan);
-      _latestFanPWM = fan;
-    }
-  } else {
-    pwmWrite(PW_CTR, 0);
-    pwmWrite(FAN_CTR, 0);
+  if (_latestFanPWM != fan) {
+    pwmWrite(FAN_CTR, fan);
+    _latestFanPWM = fan;
   }
-  
-
 }
 
-// 온도와 습도를 입력받아 불쾌지수를 계산하여 반환한다.
-// 불쾌지수에 대한 계산법은 http://www.kma.go.kr/HELP/basic/help_01_05.jsp 이 곳에서 확인하였다.
-float calcDiscomfortIndex(float temp, float humi) {
-  return (1.8f * temp) - (0.55 * (1 - humi / 100.0f) * (1.8f * temp - 26)) + 32;
-}
+
 

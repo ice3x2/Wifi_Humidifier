@@ -332,7 +332,7 @@ angular.module('app').controller('MainCtrl', function($scope, $mdDialog,$mdToast
             $scope.tempValue = (status.connection == 0) ? 'NC ' : status.temperature;
             $scope.humidityValue = (status.connection == 0) ? 'NC ' : status.humidity;
             $scope.diValue = (status.connection == 0) ? 'NC ' : status.discomfort;
-            $scope.opValue = status.water == -1 ? 'Off' : (status.water == 0) ? 'Water' : (status.water == 1) ? 'On' : 'NC';
+            $scope.opValue = status.operation || 'NC';
             _status = status;
             startShowNoWaterAlert();
         }, function (err) {

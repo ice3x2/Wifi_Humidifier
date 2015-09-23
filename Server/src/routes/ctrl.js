@@ -33,8 +33,47 @@ router.post('/setting', function(req, res, next) {
     } else if(sessionStatus == SESSION_FAIL) {
         res.status(401).json({auth : -1});
     }
-
 });
+
+
+
+
+router.get("/data", function(req, res, next) {
+
+    res.removeHeader('X-Powered-By');
+    res.removeHeader('Transfer-Encoding');
+    res.removeHeader('Date');
+    if (req.path != null) {
+        console.log(req.path);
+    }
+    var result = "";
+    var key = req.query.key;
+    var temperature = req.query.t;
+    var humidity = req.query.h;
+    var water = req.query.w;
+    var pwmValues = controlValues.getPWMValue(temperature / 10.0, humidity / 10.0);
+
+    if(key != __properties.control.key) {
+        result = "Auth fail";
+    } else {
+        result = ',' + (pwmValues.power) +
+            ',' + (pwmValues.fan) +  ',,,,,';
+    }
+
+    log.v(JSON.stringify(req.query));
+
+    if (temperature > -100 && humidity > -100 &&
+        temperature != undefined && humidity != undefined && water != undefined) {
+        dataStore.putHumidity(humidity / 10).putTemperature(temperature / 10).putWater(water);
+        dataStore.putFan(controlValues.isHumidificationMode()?controlValues.getFan():0);
+        dataStore.putPower(controlValues.isHumidificationMode()?controlValues.getPower():0);
+        dataStore.commitData();
+    }
+
+    log.i(result);
+    res.send(result);
+});
+
 
 function checkAuth(cookies) {
     if(_.isUndefined(cookies) || _.isUndefined(cookies.sid)) {
