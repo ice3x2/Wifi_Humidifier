@@ -1,6 +1,8 @@
 # Wifi_Humidifier
 ![](https://raw.githubusercontent.com/ice3x2/Wifi_Humidifier/master/image/photo6.jpg)
  * 데모 서버 : http://devlab.iptime.org:8080/
+ * 개발기 : http://www.dev.re.kr/82
+ * 크롬,모바일 크롬, 사파리, 모바일 사파리, 익스프롤러 11 이상에서 동작. 
  
 ## Hardware
 ![](https://raw.githubusercontent.com/ice3x2/Wifi_Humidifier/master/image/Schematic.jpg)
