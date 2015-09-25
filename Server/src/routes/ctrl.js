@@ -11,6 +11,7 @@ var log = include('ColorLog');
 const SESSION_FAIL = 0;
 const SESSION_EXPIRED = 1;
 const SESSION_CONFIRMED = 2;
+const NIL_VALUE = -100;
 
 router.post('/value', function(req, res, next) {
     log.i("post : " + req.path);
@@ -62,7 +63,7 @@ router.get("/data", function(req, res, next) {
 
     log.v(JSON.stringify(req.query));
 
-    if (temperature > -100 && humidity > -100 &&
+    if (temperature > NIL_VALUE && humidity > NIL_VALUE &&
         temperature != undefined && humidity != undefined && water != undefined) {
         dataStore.putHumidity(humidity / 10).putTemperature(temperature / 10).putWater(water);
         dataStore.putFan(controlValues.isHumidificationMode()?controlValues.getFan():0);

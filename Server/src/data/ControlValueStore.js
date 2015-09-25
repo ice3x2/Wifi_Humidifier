@@ -14,6 +14,7 @@ const PWM_MIN_FAN = 2;
 const PWM_MAX_FAN = 255;
 
 const CHECK_DELAY_LIMIT = 60000;
+const NIL_VALUE = -100;
 
 var ControlValueStore = function () {
     var _controlValue =  {
@@ -27,6 +28,10 @@ var ControlValueStore = function () {
     var _this = this;
     var _humidificationMode = false;
     var _lastCheckMillis = 0;
+    var _lastSendValue = {
+        power : 0,
+        fan : 0
+    };
     persist.initSync({
         dir : dir
     });
@@ -72,25 +77,24 @@ var ControlValueStore = function () {
 
     this.isHumidificationMode = function() {
         return _humidificationMode;
-    }
+    };
 
     this.getPWMValue = function(currentTemp, currentHumidity) {
         var value = {};
         var currentDiscomfortIndex = calcDiscomfortIndex(currentTemp,currentHumidity);
-        if(currentHumidity > _controlValue.maxHumidity || currentDiscomfortIndex > _controlValue.thresholdDiscomfort ) {
+        if(currentTemp <= NIL_VALUE || currentHumidity <= NIL_VALUE) {
+            return _lastSendValue;
+        } else if(currentHumidity > _controlValue.maxHumidity || currentDiscomfortIndex > _controlValue.thresholdDiscomfort ) {
             _humidificationMode = false;
-        } else if(currentHumidity <  _controlValue.minHumidity) {
-            _humidificationMode = true;
-        } else if(Date.now() - _lastCheckMillis > CHECK_DELAY_LIMIT) {
+        } else if(currentHumidity <  _controlValue.minHumidity || Date.now() - _lastCheckMillis > CHECK_DELAY_LIMIT) {
             _humidificationMode = true;
         }
         value.power = _humidificationMode?getPowerPWM():0;
         value.fan = _humidificationMode?getFanPWM():0;
+        _lastSendValue = _.cloneDeep(value);
         _lastCheckMillis = Date.now();
         return value;
     };
-
-
 
 
 
