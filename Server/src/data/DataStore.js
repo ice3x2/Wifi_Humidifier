@@ -6,7 +6,7 @@ var SimpleDb = require('simple-node-db');
 var persist = require('node-persist');
 var path = require('path');
 var log = include('ColorLog');
-
+var fs = require('fs');
 
 const KEY_UPDATE_INFO = "KEY_UPDATE_INFO";
 
@@ -26,7 +26,11 @@ var DBController = function() {
     };
 
     var _realTimeDatas = [];
-    var dir = path.join(path.resolve(__properties.database), 'persist') + '';
+    var dir = path.join(path.resolve(__properties.database), 'persist');
+    var lock = path.join(path.resolve(__properties.database), 'LOCK') + '';
+    if(fs.existsSync(lock)) {
+        log.i('DELETE LOCK FILE : ' + lock);
+    }
 
     log.d("load data_base : " +path.resolve(__properties.database));
     var _db = new SimpleDb(path.resolve(__properties.database));
