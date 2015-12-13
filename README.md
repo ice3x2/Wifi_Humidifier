@@ -9,6 +9,7 @@
 ![](https://raw.githubusercontent.com/ice3x2/Wifi_Humidifier/master/image/Schematic.jpg)
 * 파트
   * 보만 미니 가습기 (Bomann mini humidifier)
+    * 가습기와 함께 제공되는 아답터는 24v, 750mA 를 공급하는 AC/DC 아답터이다. 
     * 아래 사진처럼 밑 뚜껑을 열고 위 회로도 그림에서 점선 표시 된 부품들을 넣는다. 그 외의 파트는 외벽에 구멍을 뚫어 케이블을 밖으로 빼서 연결한다. 
       * ![](https://github.com/ice3x2/Wifi_Humidifier/blob/master/image/photo3.JPG)
       * ![](https://github.com/ice3x2/Wifi_Humidifier/blob/master/image/photo5.JPG)
