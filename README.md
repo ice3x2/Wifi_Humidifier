@@ -1,4 +1,5 @@
 # Wifi_Humidifier
+![](https://github.com/ice3x2/Wifi_Humidifier/blob/master/image/photo1.JPG)
 ![](https://raw.githubusercontent.com/ice3x2/Wifi_Humidifier/master/image/photo6.jpg)
  * 데모 서버 : http://devlab.iptime.org:8080/
  * 개발기 : http://www.dev.re.kr/82
@@ -8,9 +9,11 @@
 ![](https://raw.githubusercontent.com/ice3x2/Wifi_Humidifier/master/image/Schematic.jpg)
 * 파트
   * 보만 미니 가습기 (Bomann mini humidifier)
-    * 아래 사진처럼 밑 뚜껑을 열고 위 회로도 그림에서 점선 표시 된 부품들을 넣는다. 그 외의 파트는 외벽에 구멍을 뚫어 케이블을 밖으로 빼서 연결한다. (이미지 참고 : https://github.com/ice3x2/Wifi_Humidifier/blob/master/image/photo5.JPG)
-    * ![](https://github.com/ice3x2/Wifi_Humidifier/blob/master/image/photo3.JPG)
+    * 아래 사진처럼 밑 뚜껑을 열고 위 회로도 그림에서 점선 표시 된 부품들을 넣는다. 그 외의 파트는 외벽에 구멍을 뚫어 케이블을 밖으로 빼서 연결한다. 
+      * ![](https://github.com/ice3x2/Wifi_Humidifier/blob/master/image/photo3.JPG)
+      * ![](https://github.com/ice3x2/Wifi_Humidifier/blob/master/image/photo5.JPG)
     * 물 경고 LED의 + 에 Arduino 의 analog pin 2 을 연결한다. 마찬가지로 power LED + 에는 Arduino 의 analog pin 1 을 연결한다.
+      * ![](https://github.com/ice3x2/Wifi_Humidifier/blob/master/image/photo4.JPG)
     * 팬의 그라운드와 메인보드의 그라운드 케이블을 끊어서 NPN 트랜지스터(tip120) 에 연결한다.
     * 모든 부품을 가습기 내부에 넣을 수 있지만, 바람이 지나가는 공간이 좁아져 분무량에 영향을 미치게 된다.  
     * PWM 제어를 위하여 NPN 트랜지스터를 이용하였고, ESP8266 의 소비전력이 크기 때문에 분무량이 약간 감소한다. 
@@ -28,7 +31,8 @@
   * 22uf Capacitor x 3
   * 0.1uf(100nf) Capacitor x 3
   * DHT22 (am2302) x 1
-  * ESP8266 x 1 - 최신 AT+COMMAND firmware 권장.
+  * ESP8266 x 1
+    * v0.9.2.2 AT 펌웨어 사용, 설치법 참고 : http://m.blog.naver.com/damtaja/220311412393
   * 1117 3.3V (ams1117, ld1117 ...) 연결시 핀 방향에 주의.
   
 ## 시작하기
